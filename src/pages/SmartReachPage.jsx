@@ -1,4 +1,4 @@
-// SmartReachPage.jsx
+// SmartReachPage.jsx (updated with both modals)
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useSharedUi } from "patientcare-portal-sharedui/useSharedUi";
 import DataGrid from "patientcare-portal-sharedui/DataGrid";
@@ -6,7 +6,8 @@ import ConfirmDialog from "patientcare-portal-sharedui/ConfirmDialog";
 import { SHARED_SERVICES_CONSTANTS } from "patientcare-portal-sharedui/constants";
 import { ModuleLayout } from "patientcare-portal-sharedui/SideNav";
 import smartReachApi from "../services/smartReachApi";
-import ProgramInfoEdit from "../components/ProgramInfoEdit"; // Import the separate component
+import ProgramInfoEdit from "../components/ProgramInfoEdit";
+import ProgramDetailsEdit from "../components/ProgramDetailsEdit";
 import ReactDOM from "react-dom";
 
 // Status mapping
@@ -20,7 +21,7 @@ const STATUS_OPTIONS = [
 const closedEditor = { open: false, program: null };
 
 // ============= ActionMenu Component =============
-const ActionMenu = ({ row, onProgramEdit, onProgramDelete }) => {
+const ActionMenu = ({ row, onProgramEdit, onProgramDetails, onProgramDelete }) => {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState(null);
   const buttonRef = useRef(null);
@@ -57,7 +58,7 @@ const ActionMenu = ({ row, onProgramEdit, onProgramDelete }) => {
 
   const handleProgramDetailsEdit = (event) => {
     event.stopPropagation();
-    console.log("Edit program details:", row);
+    onProgramDetails?.(row);
     setOpen(false);
   };
 
@@ -257,6 +258,7 @@ export default function SmartReachPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("smartreach");
   const [editor, setEditor] = useState(closedEditor);
+  const [detailsModal, setDetailsModal] = useState({ open: false, program: null });
   const [confirmDelete, setConfirmDelete] = useState({ open: false, program: null });
 
   const loadPrograms = useCallback(async () => {
@@ -317,7 +319,6 @@ export default function SmartReachPage() {
     setConfirmDelete({ open: false, program: null });
     if (!program) return;
 
-    // TODO: Implement delete API call when available
     setProgramData((prev) => prev.filter((p) => p.id !== program.id));
     shared.toast?.success?.("Program deleted successfully");
   };
@@ -386,6 +387,7 @@ export default function SmartReachPage() {
           <ActionMenu
             row={params.data}
             onProgramEdit={(program) => setEditor({ open: true, program })}
+            onProgramDetails={(program) => setDetailsModal({ open: true, program })}
             onProgramDelete={(program) => setConfirmDelete({ open: true, program })}
           />
         ),
@@ -394,7 +396,6 @@ export default function SmartReachPage() {
     [handleStatusChange]
   );
 
-  // Navigation items - matches DM module pattern
   const navItems = useMemo(
     () => [
       {
@@ -406,7 +407,6 @@ export default function SmartReachPage() {
     [programData.length]
   );
 
-  // Navigation actions - matches DM module pattern with Create button
   const navActions = useMemo(
     () => [
       {
@@ -473,6 +473,7 @@ export default function SmartReachPage() {
         />
       </div>
 
+      {/* Program Edit Modal */}
       {editor.open && editor.program && (
         <ProgramInfoEdit
           program={editor.program}
@@ -488,6 +489,14 @@ export default function SmartReachPage() {
             shared.toast?.success?.("Program updated successfully");
             setEditor(closedEditor);
           }}
+        />
+      )}
+
+      {/* Program Details Modal */}
+      {detailsModal.open && detailsModal.program && (
+        <ProgramDetailsEdit
+          program={detailsModal.program}
+          onClose={() => setDetailsModal({ open: false, program: null })}
         />
       )}
 
