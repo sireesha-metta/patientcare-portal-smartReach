@@ -1,4 +1,4 @@
-// src/components/ProgramInfoEdit.jsx
+// src/components/CreateProgram.jsx
 import { useState, useEffect } from "react";
 import { CalendarDays, Info, X } from "lucide-react";
 import { useSharedUi } from "patientcare-portal-sharedui/useSharedUi";
@@ -6,28 +6,57 @@ import ConfirmDialog from "patientcare-portal-sharedui/ConfirmDialog";
 import smartReachApi from "../services/smartReachApi";
 import { apiErrorText } from "../utils/apiErrorText";
 
-const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
+const CreateProgram = ({ onClose, onUpdate }) => {
   const shared = useSharedUi();
   const [loading, setLoading] = useState(false);
   const [goals, setGoals] = useState([]);
-  const [programInfo, setProgramInfo] = useState(null);
+  const [payers, setPayers] = useState([]);
   const [totalThreshold, setTotalThreshold] = useState(0);
   const [initialThreshold, setInitialThreshold] = useState(0);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  // Add these state variables near your other useState declarations
-  const [vptc, setVptc] = useState(false);
-  const [payerTeamCustomer, setPayerTeamCustomer] = useState(null);
-  const [payerTeamCustomerName, setPayerTeamCustomerName] = useState("");
+  const [parentSite, setParentSite] = useState(null);
+
+  // Get today's date for default values
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
+  // Get date 30 days from now for default end date
+  const getFutureDate = (days = 30) => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Generate time options from 1AM to 12AM
+  const generateTimeOptions = () => {
+    const times = [];
+    for (let hour = 1; hour <= 12; hour++) {
+      times.push(`${hour}AM`);
+    }
+    for (let hour = 1; hour <= 12; hour++) {
+      times.push(`${hour}PM`);
+    }
+    return times;
+  };
+
+  const timeOptions = generateTimeOptions();
+
+  // Set default time to 9AM
+  const defaultTime = "9AM";
 
   const [formData, setFormData] = useState({
     programName: "",
     externalDataRequired: false,
     goalId: "",
     goalName: "",
-    textTime: "",
-    fromDate: "",
-    toDate: "",
+    textTime: defaultTime,
+    fromDate: getTodayDate(),
+    toDate: getFutureDate(30),
     threshold: "",
+    pacEnabled: false,
+    selectedCustomer: "",
   });
 
   // Format number with commas
@@ -48,83 +77,88 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     return parseInt(String(str).replace(/,/g, "")) || 0;
   };
 
-  // Generate time options from 1AM to 12AM
-  const generateTimeOptions = () => {
-    const times = [];
-    for (let hour = 1; hour <= 12; hour++) {
-      times.push(`${hour}AM`);
-    }
-    for (let hour = 1; hour <= 12; hour++) {
-      times.push(`${hour}PM`);
-    }
-    return times;
+  // Convert time string to 24-hour format for programScheduledTime
+  const getTimeIn24Hour = (timeStr) => {
+    if (!timeStr) return "9";
+    const hour = parseInt(timeStr);
+    const ampm = timeStr.slice(-2);
+    let hours = hour;
+    if (ampm === "PM" && hour !== 12) hours = hour + 12;
+    if (ampm === "AM" && hour === 12) hours = 0;
+    return String(hours);
   };
 
-  const timeOptions = generateTimeOptions();
-
-  // Extract time from scheduleTime (e.g., "2026-01-08 15:00:00.0" -> "3PM")
-  const extractTimeFromSchedule = (scheduleTime) => {
-    if (!scheduleTime) return "2PM";
+  // Fetch parent site
+  const fetchParentSite = async () => {
     try {
-      const date = new Date(scheduleTime);
-      if (isNaN(date.getTime())) return "2PM";
-
-      let hours = date.getHours();
-      const ampm = hours >= 12 ? "PM" : "AM";
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      return `${hours}${ampm}`;
-    } catch {
-      return "2PM";
-    }
-  };
-
-  // Convert time string to schedule time format
-  const convertTimeToSchedule = (timeStr, dateStr) => {
-    if (!timeStr || !dateStr) return null;
-    try {
-      const hour = parseInt(timeStr);
-      const ampm = timeStr.slice(-2);
-      let hours = hour;
-      if (ampm === "PM" && hour !== 12) hours = hour + 12;
-      if (ampm === "AM" && hour === 12) hours = 0;
-
-      const date = new Date(dateStr);
-      date.setHours(hours, 0, 0, 0);
-      return date.toISOString().slice(0, 19).replace("T", " ");
-    } catch {
+      const response = await smartReachApi.getParentSite();
+      console.log("Parent Site Response:", response);
+      setParentSite(response);
+      return response;
+    } catch (error) {
+      console.error("Error fetching parent site:", error);
       return null;
     }
   };
 
-  // Fetch all data when modal opens
-  useEffect(() => {
-    if (!program) return;
+  // Fetch payers for dropdown using getSmartReachPayer API
+  const fetchPayers = async () => {
+    try {
+      const response = await smartReachApi.getSmartReachPayer();
+      console.log("Full response:", response);
+      
+      let payerData = [];
+      
+      if (response) {
+        const dataSource = response.response || response;
+        
+        if (dataSource.smartReachPayers && Array.isArray(dataSource.smartReachPayers)) {
+          payerData = dataSource.smartReachPayers;
+        } else if (Array.isArray(dataSource)) {
+          payerData = dataSource;
+        } else if (Array.isArray(response)) {
+          payerData = response;
+        } else {
+          const possibleArrays = Object.values(dataSource).filter(val => Array.isArray(val));
+          if (possibleArrays.length > 0) {
+            payerData = possibleArrays[0];
+          }
+        }
+      }
+      
+      console.log("Payers loaded:", payerData);
+      console.log("Number of payers:", payerData.length);
+      setPayers(payerData);
+    } catch (error) {
+      console.error("Error fetching payers:", error);
+      setPayers([
+        { id: 22, name: "Ajayt" },
+        { id: 1, name: "Suneel Payer" },
+        { id: 2, name: "PyaerGroup43" },
+        { id: 3, name: "California" },
+        { id: 4, name: "PayerGroup21" },
+      ]);
+    }
+  };
 
-    const fetchProgramData = async () => {
+  // Fetch initial data
+  useEffect(() => {
+    const fetchInitialData = async () => {
       setLoading(true);
       try {
-        // Fetch program info, goals, and threshold in parallel
-        const [programInfoResult, goalsResult, thresholdResult] =
-          await Promise.all([
-            smartReachApi.getProgramInfo(program.id),
-            smartReachApi.getGoals(),
-            smartReachApi.getProgramThreshold(),
-          ]);
+        const [goalsResult, thresholdResult] = await Promise.all([
+          smartReachApi.getGoals(),
+          smartReachApi.getProgramThreshold(),
+        ]);
 
-        console.log("Program Info Response:", programInfoResult);
-        console.log("Threshold Response (totalThreshold):", thresholdResult);
-
-        // Handle program info response - it's an array with one object
-        let infoData = programInfoResult;
-        if (Array.isArray(programInfoResult) && programInfoResult.length > 0) {
-          infoData = programInfoResult[0];
-        }
-
-        setProgramInfo(infoData);
         setGoals(Array.isArray(goalsResult) ? goalsResult : []);
+        
+        // Fetch payers and parent site in parallel
+        await Promise.all([
+          fetchPayers(),
+          fetchParentSite(),
+        ]);
 
-        // Get total threshold from API response
         let totalThresholdValue = 0;
         if (thresholdResult !== null && thresholdResult !== undefined) {
           if (typeof thresholdResult === "number") {
@@ -141,133 +175,80 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
             totalThresholdValue = thresholdResult.value;
           }
         }
-        console.log("Total Threshold Value:", totalThresholdValue);
         setTotalThreshold(totalThresholdValue);
-
-        // Populate form data from program info response
-        if (infoData) {
-          // Find matching goal from goals list
-          const matchedGoal = Array.isArray(goalsResult)
-            ? goalsResult.find((g) => g.id === infoData.goalId)
-            : null;
-
-          // Store the initial threshold value for calculations
-          const initialThresholdValue = infoData.threshold || 0;
-          setInitialThreshold(initialThresholdValue);
-
-          // IMPORTANT: externalData is 0 or 1 from API
-          // 0 = No, 1 = Yes
-          const externalDataRequired = infoData.externalData === 1;
-          setVptc(infoData.vptc || false);
-          setPayerTeamCustomer(infoData.payerTeamCustomer || null);
-          setPayerTeamCustomerName(infoData.payerTeamCustomerName || "");
-          setFormData({
-            programName: infoData.programName ?? program.name ?? "",
-            externalDataRequired: externalDataRequired,
-            goalId:
-              infoData.goalId !== undefined && infoData.goalId !== null
-                ? String(infoData.goalId)
-                : "",
-            goalName:
-              infoData.goalName ?? matchedGoal?.name ?? "Visit Follow-up",
-            textTime: extractTimeFromSchedule(infoData.scheduleTime),
-            fromDate: infoData.startDate ?? "",
-            toDate: infoData.endDate ?? "",
-            threshold:
-              infoData.threshold !== null && infoData.threshold !== undefined
-                ? String(infoData.threshold)
-                : "",
-          });
-        }
       } catch (error) {
-        console.error("Error fetching program data:", error);
-        shared.toast?.error?.(
-          apiErrorText(error, "Failed to load program data"),
-        );
-
-        // Fallback to program data
-        setFormData({
-          programName: program.name ?? "",
-          externalDataRequired: false,
-          goalId: "",
-          goalName: "Visit Follow-up",
-          textTime: "2PM",
-          fromDate: "",
-          toDate: "2026-01-10",
-          threshold: "",
-        });
+        console.error("Error fetching data:", error);
+        shared.toast?.error?.(apiErrorText(error, "Failed to load data"));
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProgramData();
-  }, [program, shared]);
-
-  if (!program) return null;
+    fetchInitialData();
+  }, [shared]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handlePACChange = (value) => {
+    setFormData((prev) => ({
+      ...prev,
+      pacEnabled: value,
+      selectedCustomer: value ? prev.selectedCustomer : "",
+    }));
+  };
+
+  const handleCustomerChange = (event) => {
+    const customerId = event.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      selectedCustomer: customerId,
+    }));
+  };
+
   const handleThresholdChange = (value) => {
-    // Remove non-numeric characters (commas, spaces, etc.)
     const cleanValue = value.replace(/,/g, "");
 
-    // Allow empty or only digits
     if (cleanValue === "" || /^\d*$/.test(cleanValue)) {
-      // Max 4 digits restriction
       if (cleanValue.length <= 4) {
         const newValue = parseInt(cleanValue) || 0;
 
-        // Get practice text limit
         const practiceRole = shared.userDetails?.roles?.practicerole?.[0];
         const totalTextLimit = practiceRole?.practiceTextLimit || 0;
 
-        // Calculate remaining = totalTextLimit - totalThreshold + initialThreshold - newValue
         const remainingWithNewValue =
           totalTextLimit - totalThreshold + initialThreshold - newValue;
 
-        // Don't allow value that makes remaining negative
         if (remainingWithNewValue >= 0) {
           handleChange("threshold", cleanValue);
         } else {
           shared.toast?.warning?.(
-            `Threshold cannot exceed ${formatPlainNumber(totalTextLimit - totalThreshold + initialThreshold)}`,
+            `Threshold cannot exceed ${formatPlainNumber(totalTextLimit - totalThreshold + initialThreshold)}`
           );
-          // Set to max allowed value
           const maxAllowed = totalTextLimit - totalThreshold + initialThreshold;
           handleChange("threshold", String(maxAllowed));
         }
       } else {
-        // Show warning if trying to type more than 4 digits
         shared.toast?.warning?.("Threshold cannot exceed 4 digits");
       }
     }
   };
 
-  // Get practice text limit from user details
   const userDetails = shared.userDetails;
   const practiceRole = userDetails?.roles?.practicerole?.[0];
   const totalTextLimit = practiceRole?.practiceTextLimit || 0;
 
-  // Get threshold value from form
   const thresholdValue = parseNumber(formData.threshold);
-
-  // Calculate perOccupied = (threshold / totalTextLimit) * 100
   const perOccupied =
     totalTextLimit > 0 ? (thresholdValue / totalTextLimit) * 100 : 0;
   const perOccupiedFormatted = perOccupied.toFixed(2);
-
-  // Calculate remaining = totalTextLimit - totalThreshold + initialThreshold - thresholdValue
   const remaining =
     totalTextLimit - totalThreshold + initialThreshold - thresholdValue;
 
   // Handle close with confirmation
   const handleClose = () => {
-    // Check if any changes were made
-    const hasChanges =
-      formData.threshold !== String(programInfo?.threshold || "");
+    const hasChanges = formData.programName || formData.threshold;
     if (hasChanges) {
       setShowConfirmDialog(true);
     } else {
@@ -278,51 +259,87 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
   // Handle confirm dialog close
   const handleConfirmClose = (confirmed) => {
     setShowConfirmDialog(false);
-    // If confirmed (true), close the modal
-    // If not confirmed (false or undefined), stay on the modal
     if (confirmed === true) {
       onClose();
     }
   };
 
   const handleSubmit = async () => {
+    if (!formData.programName.trim()) {
+      shared.toast?.error?.("Please enter a program name");
+      return;
+    }
+
     if (!formData.threshold || parseNumber(formData.threshold) === 0) {
       shared.toast?.error?.("Please enter a threshold value");
       return;
     }
 
+    if (formData.pacEnabled && !formData.selectedCustomer) {
+      shared.toast?.error?.("Please select a Payer Analytics Customer");
+      return;
+    }
+
     setLoading(true);
     try {
-      const scheduleTime = convertTimeToSchedule(
-        formData.textTime,
-        formData.fromDate,
-      );
+      // Find selected goal and payer
+      const selectedGoal = goals.find(g => String(g.id) === formData.goalId);
+      const selectedPayer = payers.find(p => String(p.id) === formData.selectedCustomer);
+      
+      // Get PMS ID from parent site
+      const pmsId = parentSite?.id || parentSite?.pmsId || "4";
 
+      // Build payload matching Angular structure EXACTLY
       const payload = {
-        programId: Number(program.id),
-        programName: formData.programName,
-        externalDataRequired: formData.externalDataRequired ? 1 : 0,
-        goalId: Number(formData.goalId) || 2,
-        goalName: formData.goalName,
-        scheduleTime:
-          scheduleTime || `${formData.fromDate} ${formData.textTime}`,
-        startDate: formData.fromDate,
-        endDate: formData.toDate,
-        threshold: parseNumber(formData.threshold),
+        programName: formData.programName.trim(),
+        goalId: selectedGoal?.id || Number(formData.goalId) || 2,
+        goalName: selectedGoal?.name || formData.goalName || "Visit Follow-up",
+        programGoalInformationalStatus: null,
+        noThresholdMessages: formData.threshold + "",
+        programScheduledTime: getTimeIn24Hour(formData.textTime),
+        programOldScheduledTime: "0",
+        publishChannel: [1],
+        updateFlag: true,
+        activeStatus: 1,
+        externalData: formData.externalDataRequired ? 1 : 0,
+        vptc: formData.pacEnabled ? 1 : 0,
+        pmsId: pmsId,
+        programStartDate: formData.fromDate,
+        programEndDate: formData.toDate,
+        payerId: formData.pacEnabled ? Number(formData.selectedCustomer) : null,
+        payerName: formData.pacEnabled ? (selectedPayer?.name || "") : "",
       };
 
-      await smartReachApi.updateProgramInfo(payload);
-
-      onUpdate({
-        ...program,
-        ...formData,
-        threshold: parseNumber(formData.threshold),
-      });
-
-      shared.toast?.success?.("Program updated successfully");
+      console.log("Creating program with payload:", payload);
+      
+      // Call the API
+      const response = await smartReachApi.createProgram(payload);
+      console.log("Create program response:", response);
+      
+      // Handle response - match Angular logic
+      if (response && response.message === "Program created successfully") {
+        shared.toast?.success?.(response.message);
+        onUpdate();
+        onClose();
+      } else if (response && response.message) {
+        shared.toast?.error?.(response.message);
+      } else {
+        // If response doesn't have message property but request was successful
+        shared.toast?.success?.("Program created successfully");
+        onUpdate();
+        onClose();
+      }
     } catch (error) {
-      console.error("Error updating program:", error);
-      shared.toast?.error?.(apiErrorText(error, "Failed to update program"));
+      console.error("Error creating program:", error);
+      
+      // Handle error response - match Angular logic
+      if (error.response?.data?.message) {
+        shared.toast?.error?.(error.response.data.message);
+      } else if (error.message) {
+        shared.toast?.error?.(error.message);
+      } else {
+        shared.toast?.error?.("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -345,7 +362,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
             <h2 className="text-lg font-bold text-slate-900">
-              Program Edit
+              Create Program
               {loading && (
                 <span className="ml-2 text-sm font-normal text-slate-500">
                   Loading...
@@ -380,11 +397,12 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                       d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                     />
                   </svg>
-                  <span>Loading program data...</span>
+                  <span>Loading...</span>
                 </div>
               </div>
             ) : (
               <>
+                {/* Program Name */}
                 <div>
                   <input
                     type="text"
@@ -398,13 +416,8 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                   />
                 </div>
 
-                <div>
-                  <span className="text-base font-semibold text-slate-700">
-                    Program ID :{" "}
-                  </span>
-                  <span className="text-base text-slate-700">{program.id}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-6">
+                {/* External Data Required and PAC in same row */}
+                <div className="grid grid-cols-2 gap-6">
                   {/* External Data Required */}
                   <div>
                     <div
@@ -436,9 +449,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     >
                       <button
                         type="button"
-                        onClick={() =>
-                          handleChange("externalDataRequired", true)
-                        }
+                        onClick={() => handleChange("externalDataRequired", true)}
                         style={{
                           height: "44px",
                           width: "84px",
@@ -473,9 +484,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                       </button>
                       <button
                         type="button"
-                        onClick={() =>
-                          handleChange("externalDataRequired", false)
-                        }
+                        onClick={() => handleChange("externalDataRequired", false)}
                         style={{
                           height: "44px",
                           width: "58px",
@@ -510,85 +519,158 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     </div>
                   </div>
 
-                  {vptc && (
-                    <div>
-                      <div
+                  {/* PAC Toggle */}
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <span
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          marginBottom: "8px",
+                          fontSize: "16px",
+                          fontWeight: 600,
+                          color: "#334155",
                         }}
                       >
-                        <span
-                          style={{
-                            fontSize: "16px",
-                            fontWeight: 600,
-                            color: "#334155",
-                          }}
-                        >
-                          Payer Analytics Customer
-                        </span>
-                        <Info size={20} className="fill-blue-600 text-white" />
-                      </div>
-                      <div
+                        PAC
+                      </span>
+                      <Info size={20} className="fill-blue-600 text-white" />
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                        border: "1px solid #d1d5db",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handlePACChange(true)}
                         style={{
                           height: "44px",
-                          width: "100%",
-                          padding: "0 16px",
-                          display: "flex",
-                          alignItems: "center",
-                          backgroundColor: "#f8fafc",
-                          border: "1px solid #d1d5db",
-                          borderRadius: "8px",
+                          width: "84px",
                           fontSize: "14px",
-                          color: "#1e293b",
+                          fontWeight: 600,
+                          transition: "all 0.2s",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          backgroundColor:
+                            formData.pacEnabled === true
+                              ? "#10b981"
+                              : "#ffffff",
+                          color:
+                            formData.pacEnabled === true
+                              ? "#ffffff"
+                              : "#475569",
+                          border: "none",
+                          borderRight: "1px solid #d1d5db",
                         }}
-                      >
-                        {payerTeamCustomerName || "Not assigned"}
-                      </div>
-                    </div>
-                  )}
-                  {vptc && (
-                    <div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          marginBottom: "8px",
+                        onMouseEnter={(e) => {
+                          if (!formData.pacEnabled) {
+                            e.target.style.backgroundColor = "#f8fafc";
+                          }
                         }}
+                        onMouseLeave={(e) => {
+                          if (!formData.pacEnabled) {
+                            e.target.style.backgroundColor = "#ffffff";
+                          }
+                        }}
+                        disabled={loading}
                       >
-                        <span
-                          style={{
-                            fontSize: "16px",
-                            fontWeight: 600,
-                            color: "#334155",
-                          }}
-                        >
-                          PAC
-                        </span>
-                        <Info size={20} className="fill-blue-600 text-white" />
-                      </div>
-                      <div
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handlePACChange(false)}
                         style={{
                           height: "44px",
-                          width: "100%",
-                          padding: "0 16px",
-                          display: "flex",
-                          alignItems: "center",
-                          backgroundColor: "#f8fafc",
-                          border: "1px solid #d1d5db",
-                          borderRadius: "8px",
+                          width: "58px",
                           fontSize: "14px",
-                          color: "#1e293b",
+                          fontWeight: 600,
+                          transition: "all 0.2s",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          backgroundColor:
+                            formData.pacEnabled === false
+                              ? "#10b981"
+                              : "#ffffff",
+                          color:
+                            formData.pacEnabled === false
+                              ? "#ffffff"
+                              : "#475569",
+                          border: "none",
                         }}
+                        onMouseEnter={(e) => {
+                          if (formData.pacEnabled !== false) {
+                            e.target.style.backgroundColor = "#f8fafc";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (formData.pacEnabled !== false) {
+                            e.target.style.backgroundColor = "#ffffff";
+                          }
+                        }}
+                        disabled={loading}
                       >
-                        {vptc ? "Yes" : "No"}
-                      </div>
+                        No
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
+
+                {/* Payer Analytics Customer Dropdown - Only show when PAC is Yes */}
+                {formData.pacEnabled && (
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "16px",
+                          fontWeight: 600,
+                          color: "#334155",
+                        }}
+                      >
+                        Payer Analytics Customer
+                      </span>
+                      <Info size={20} className="fill-blue-600 text-white" />
+                    </div>
+                    <select
+                      value={formData.selectedCustomer}
+                      onChange={handleCustomerChange}
+                      className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      disabled={loading}
+                      style={{ height: "44px" }}
+                    >
+                      <option value="">Select a customer...</option>
+                      {payers.length > 0 ? (
+                        payers.map((payer) => (
+                          <option key={payer.id} value={payer.id}>
+                            {payer.name}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="22">Ajayt</option>
+                          <option value="1">Suneel Payer</option>
+                          <option value="2">PyaerGroup43</option>
+                          <option value="3">California</option>
+                          <option value="4">PayerGroup21</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {/* Goal and Text Time */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="mb-1 block text-sm font-semibold text-slate-700">
@@ -598,7 +680,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                       value={formData.goalId}
                       onChange={(event) => {
                         const selectedGoal = goals.find(
-                          (g) => String(g.id) === event.target.value,
+                          (g) => String(g.id) === event.target.value
                         );
                         handleChange("goalId", event.target.value);
                         handleChange("goalName", selectedGoal?.name || "");
@@ -643,6 +725,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                   </div>
                 </div>
 
+                {/* Dates */}
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Dates
@@ -660,7 +743,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                             handleChange("fromDate", event.target.value)
                           }
                           className="h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                          placeholder="MM/DD/YYYY"
                           disabled={loading}
                         />
                         <CalendarDays
@@ -739,15 +821,8 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
             )}
           </div>
 
+          {/* Footer */}
           <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading || !formData.programName}
-              className="rounded-lg bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {loading ? "Saving..." : "Update Program"}
-            </button>
             <button
               type="button"
               onClick={handleClose}
@@ -755,6 +830,14 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
               className="rounded-lg border border-slate-300 bg-white px-6 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60"
             >
               Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || !formData.programName}
+              className="rounded-lg bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? "Creating..." : "Create Program"}
             </button>
           </div>
         </div>
@@ -766,4 +849,4 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
   );
 };
 
-export default ProgramInfoEdit;
+export default CreateProgram;

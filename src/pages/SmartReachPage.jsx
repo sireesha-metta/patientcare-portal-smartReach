@@ -1,4 +1,4 @@
-// SmartReachPage.jsx (updated with both modals)
+// SmartReachPage.jsx - Updated to use CreateProgram modal
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useSharedUi } from "patientcare-portal-sharedui/useSharedUi";
 import DataGrid from "patientcare-portal-sharedui/DataGrid";
@@ -8,6 +8,7 @@ import { ModuleLayout } from "patientcare-portal-sharedui/SideNav";
 import smartReachApi from "../services/smartReachApi";
 import ProgramInfoEdit from "../components/ProgramInfoEdit";
 import ProgramDetailsEdit from "../components/ProgramDetailsEdit";
+import CreateProgram from "../components/CreateProgram";
 import ReactDOM from "react-dom";
 
 // Status mapping
@@ -258,6 +259,7 @@ export default function SmartReachPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("smartreach");
   const [editor, setEditor] = useState(closedEditor);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [detailsModal, setDetailsModal] = useState({ open: false, program: null });
   const [confirmDelete, setConfirmDelete] = useState({ open: false, program: null });
 
@@ -319,8 +321,20 @@ export default function SmartReachPage() {
     setConfirmDelete({ open: false, program: null });
     if (!program) return;
 
-    setProgramData((prev) => prev.filter((p) => p.id !== program.id));
-    shared.toast?.success?.("Program deleted successfully");
+    try {
+      await smartReachApi.deleteProgram(Number(program.id));
+      await loadPrograms();
+      setProgramData((prev) => prev.filter((p) => p.id !== program.id));
+      shared.toast?.success?.("Program deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete program:", error);
+      shared.toast?.error?.(error?.response?.data?.message || error?.message || "Failed to delete program");
+    }
+  };
+
+  // Handle Create New Program - opens modal
+  const handleCreateProgram = () => {
+    setCreateModalOpen(true);
   };
 
   const columns = useMemo(
@@ -417,7 +431,7 @@ export default function SmartReachPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         ),
-        onClick: () => setEditor({ open: true, program: null }),
+        onClick: handleCreateProgram,
       },
     ],
     []
@@ -472,6 +486,16 @@ export default function SmartReachPage() {
           height={450}
         />
       </div>
+
+      {/* Create Program Modal */}
+      {createModalOpen && (
+        <CreateProgram
+          onClose={() => setCreateModalOpen(false)}
+          onUpdate={() => {
+            refreshPrograms();
+          }}
+        />
+      )}
 
       {/* Program Edit Modal */}
       {editor.open && editor.program && (
