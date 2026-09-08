@@ -1405,9 +1405,49 @@ export const smartReachApi = {
     }
   },
 
+  /// src/services/smartReachApi.js
+
+  // Add these methods to the smartReachApi object (after the existing methods):
+
   // ============================================================
-  // GET PARENT SITE
+  // CREATE/UPDATE PROGRAM (POST /programs)
   // ============================================================
+  async createOrUpdateProgram(payload) {
+    try {
+      console.log(
+        "📤 Create/Update Program Payload:",
+        JSON.stringify(payload, null, 2),
+      );
+      const response = await client().post("/programs", payload);
+      console.log("✅ Program created/updated successfully:", response.data);
+      return response?.data;
+    } catch (error) {
+      console.error("❌ Create/Update Program Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
+    }
+  },
+
+  // ============================================================
+  // GET GOALS BY NAME (GET /goals/{goalName})
+  // ============================================================
+  async getGoalByName(goalName) {
+    try {
+      const response = await client().get(`/goals/${goalName}`);
+      console.log("📊 Goal by name response:", response.data);
+      return response?.data;
+    } catch (error) {
+      console.error("❌ Get Goal by Name Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
+    }
+  },
   async getParentSite() {
     try {
       const response = await client().get("/parentsite/");

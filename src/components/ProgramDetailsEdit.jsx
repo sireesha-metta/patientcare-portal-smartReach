@@ -15,7 +15,6 @@ import smartReachApi from "../services/smartReachApi";
 import { apiErrorText } from "../utils/apiErrorText";
 import ConfirmDialog from "patientcare-portal-sharedui/ConfirmDialog";
 
-
 // Import shared UI components
 import DisplayCriteria from "patientcare-portal-sharedui/DisplayCriteria";
 import DisplayLocation from "patientcare-portal-sharedui/DisplayLocation";
@@ -46,9 +45,7 @@ import {
   REQUEST_FROM,
 } from "../config/smartReachConstants.js";
 
-// ============================================================
 // CONSTANTS & HELPERS
-// ============================================================
 
 const formatNumber = (num) => {
   if (num == null || isNaN(num)) return "0";
@@ -170,18 +167,15 @@ const normalizeListItem = (item) => ({
   ethnicity_id: item?.ethnicity_id || item?.id,
 });
 
-// ============================================================
 // MAIN COMPONENT
-// ============================================================
-
-const ProgramDetailsEdit = ({ program, onClose, onUpdate,onCancel }) => {
+const ProgramDetailsEdit = ({ program, onClose, onUpdate, onCancel }) => {
   const shared = useSharedUi();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [dialogLoading, setDialogLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   // State
   const [programInfo, setProgramInfo] = useState(null);
   const [selectedCriteria, setSelectedCriteria] = useState([]);
@@ -215,10 +209,7 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [dialog, setDialog] = useState({ type: null, open: false, data: null });
   // In ProgramDetailsEdit.jsx, add this helper function:
 
-  // ============================================================
   // SELECTION RULES FOR ACTION DETAILS - AUTO REPLACE
-  // ============================================================
-
   const getPracticeSumOfProgramThreshold = async (
     currentProgramThreshold = 0,
   ) => {
@@ -250,12 +241,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
 
       setRemainingTextLimit(remaining);
       setRemainingTotalTextLimit(remainingForCurrentProgram);
-
-      console.log("📊 Practice Text Limit:", practiceTextLimit);
-      console.log("📊 Used Program Threshold:", usedThreshold);
-      console.log("📊 Current Program Threshold:", currentProgramThreshold);
-      console.log("📊 Remaining Text Limit:", remaining);
-      console.log("📊 Remaining Total Text Limit:", remainingForCurrentProgram);
 
       return {
         practiceTextLimit,
@@ -314,9 +299,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
         return;
       }
 
-      console.log(`🔍 Opening ${type} detail for action ID:`, programActionId);
-      console.log(`🔍 Program ID:`, programId);
-
       let availableData = [];
       let selectedData = [];
       let title = "";
@@ -329,8 +311,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             programActionId,
             programId,
           );
-
-          console.log(`📊 Raw Activity Response:`, response);
 
           // Handle different response structures
           let availableList = [];
@@ -392,8 +372,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             programId,
           );
 
-          console.log(`📊 Raw Location Response:`, response);
-
           let availableList = [];
           let selectedList = [];
 
@@ -447,8 +425,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             programId,
           );
 
-          console.log(`📊 Raw Provider Response:`, response);
-
           let availableList = [];
           let selectedList = [];
 
@@ -501,9 +477,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           setDialogLoading(false);
           return;
       }
-
-      console.log(`📊 ${type} - Available:`, availableData);
-      console.log(`📊 ${type} - Selected:`, selectedData);
 
       // Remove selected items from available list to avoid duplicates
       const selectedIds = new Set(selectedData.map((item) => String(item.id)));
@@ -571,10 +544,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
     const programId = Number(program.id);
     const programName = programInfo?.programName || program?.name || "";
 
-    console.log("📊 Type:", type);
-    console.log("📊 Values from dialog:", values);
-    console.log("📊 Result object:", result);
-
     setDialogLoading(true);
 
     try {
@@ -582,13 +551,9 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
       let apiCall;
 
       switch (type) {
-        // --------------------------------------------------
         // ACTIVITY
-        // --------------------------------------------------
         case "activity": {
           const selectedActivity = values?.[0];
-
-          console.log("🟢 Selected Activity:", selectedActivity);
 
           payload = {
             value: [selectedActivity?.id],
@@ -604,13 +569,9 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           break;
         }
 
-        // --------------------------------------------------
         // LOCATION
-        // --------------------------------------------------
         case "location": {
           const selectedLocation = values?.[0];
-
-          console.log("📍 Selected Location:", selectedLocation);
 
           payload = {
             value: [selectedLocation?.id],
@@ -626,13 +587,9 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           break;
         }
 
-        // --------------------------------------------------
         // PROVIDER
-        // --------------------------------------------------
         case "provider": {
           const selectedProvider = values?.[0];
-
-          console.log("👨‍⚕️ Selected Provider:", selectedProvider);
 
           payload = {
             value: [selectedProvider?.id],
@@ -651,8 +608,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
         default:
           return;
       }
-
-      console.log(`📤 ${type} Payload:`, JSON.stringify(payload, null, 2));
 
       if (apiCall) {
         await apiCall;
@@ -693,10 +648,7 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
       });
     }
   };
-  // ============================================================
   // HELPER FUNCTIONS
-  // ============================================================
-
   const getItemDisplayValue = (item) => {
     if (!item) return "";
     if (typeof item === "string") {
@@ -739,10 +691,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
     return items.map(getItemDisplayValue).filter(Boolean);
   };
 
-  // ============================================================
-  // DIALOG HELPERS
-  // ============================================================
-
   const openDialog = (type, data) => {
     setDialog({
       type,
@@ -767,17 +715,13 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
     setHasChanges(true);
   };
 
-  // ============================================================
   // REFRESH CPT DATA
-  // ============================================================
-
   const refreshCptData = async (criteriaId) => {
     try {
       const result = await smartReachApi.getCptCodeHadCriteria(
         program.id,
         criteriaId,
       );
-      console.log("🔄 Refreshed CPT data:", result);
 
       const criteriaToUpdate = selectedCriteria.find(
         (c) => Number(c.id || c.criteriaId) === Number(criteriaId),
@@ -801,10 +745,7 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
     }
   };
 
-  // ============================================================
   // HANDLE DIALOG CLOSE
-  // ============================================================
-
   const handleDialogClose = async (result) => {
     if (!result) return closeDialog();
 
@@ -815,8 +756,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
       closeDialog();
       return;
     }
-
-    console.log(`📊 ${type} values:`, JSON.stringify(values, null, 2));
 
     const selectedIds = values
       .map((item) => getItemDisplayValue(item))
@@ -1106,11 +1045,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log(
-            "📤 Insurance values in id_plan_name format:",
-            insuranceValues,
-          );
-
           payload = {
             programId: programId,
             programCriteriaId: criteriaId,
@@ -1148,11 +1082,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log(
-            "📤 Location Scheduled values in id_name format:",
-            locationValues,
-          );
-
           payload = {
             programId: programId,
             attributeId: criteriaId,
@@ -1189,12 +1118,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
               return String(item);
             })
             .filter(Boolean);
-
-          console.log(
-            "📤 Location Billed values in id_name format:",
-            locationValues,
-          );
-
           payload = {
             programId: programId,
             attributeId: criteriaId,
@@ -1227,8 +1150,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
               return String(item);
             })
             .filter(Boolean);
-
-          console.log("📤 Providers values in id_name format:", providerValues);
 
           payload = {
             programId: programId,
@@ -1263,11 +1184,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log(
-            "📤 Activity Type values in id_name format:",
-            activityValues,
-          );
-
           payload = {
             programId: programId,
             criteriaId: criteriaId,
@@ -1300,11 +1216,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
               return String(item);
             })
             .filter(Boolean);
-
-          console.log(
-            "📤 Activity Set values in id_name format:",
-            activitySetValues,
-          );
 
           payload = {
             programId: programId,
@@ -1342,8 +1253,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
               (item) => item !== null && item !== undefined && item !== "",
             );
 
-          console.log("📤 Patient Zip Code values (numbers only):", zipValues);
-
           payload = {
             programId: programId,
             programCriteriaId: criteriaId,
@@ -1377,8 +1286,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
               return String(item);
             })
             .filter(Boolean);
-
-          console.log("📤 Race values in id_name format:", raceValues);
 
           payload = {
             programId: programId,
@@ -1417,11 +1324,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log(
-            "📤 Ethnicity values in id_ethnicity format:",
-            ethnicityValues,
-          );
-
           payload = {
             programId: programId,
             attributeId: criteriaId,
@@ -1431,18 +1333,11 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             operand: result.operand || data?.operand || "OR",
           };
 
-          console.log(
-            "📤 Ethnicity Payload:",
-            JSON.stringify(payload, null, 2),
-          );
-
           apiCall = smartReachApi.updateEthnicityTypeCriteria(payload);
           break;
         }
 
-        // ============================================================
         // SCHEDULED ACTIONS
-        // ============================================================
         case "displayLocation": {
           // Get the action IDs from selected values
           const actionIds = values
@@ -1458,9 +1353,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
               return null;
             })
             .filter((id) => id !== null && id !== undefined);
-
-          console.log("📤 Scheduled Actions IDs:", actionIds);
-
           payload = {
             actionId: actionIds,
             programsId: programId,
@@ -1471,19 +1363,12 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           apiCall = smartReachApi.updateProgramActions(payload);
           break;
         }
-        // Add this case after the "displayLocation" case and before "default"
 
-        // In handleDialogClose function - update the messageText case
         case "messageText": {
-          // ✅ Get the message from result.values (what MessageText returns)
-          // If result.values is an array, get the first item, otherwise use as-is
           const messageText = Array.isArray(result.values)
             ? result.values[0] || ""
             : result.values || "";
 
-          console.log("📤 Updating message text:", messageText);
-
-          // Update the programTextMsgInfo state with the new message
           if (programTextMsgInfo.length > 0) {
             const updatedMessages = programTextMsgInfo.map((msg, idx) => {
               if (idx === 0) {
@@ -1506,67 +1391,62 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           shared.toast?.success?.("Message text updated");
           break;
         }
-// In handleDialogClose function - replace the displayCriteria case
-case "displayCriteria": {
-  // Handle both "next" and "submit" actions, or when action is not "close"
-  const isSaveAction = result?.action !== "close";
-  
-  if (isSaveAction && values) {
-    try {
-      setDialogLoading(true);
+        // In handleDialogClose function - replace the displayCriteria case
+        case "displayCriteria": {
+          // Handle both "next" and "submit" actions, or when action is not "close"
+          const isSaveAction = result?.action !== "close";
 
-      // Get the criteria IDs from the selected values
-      const criteriaToSave = Array.isArray(values) ? values : [];
-      const patientAttributesId = criteriaToSave
-        .map((item) => item.id || item.criteriaId)
-        .filter(Boolean);
+          if (isSaveAction && values) {
+            try {
+              setDialogLoading(true);
 
-      // Build payload for programCriteria API
-      const payload = {
-        patientAttributesId: patientAttributesId,
-        programsId: programId,
-        activeStatus: 1,
-        programName: programName,
-      };
+              // Get the criteria IDs from the selected values
+              const criteriaToSave = Array.isArray(values) ? values : [];
+              const patientAttributesId = criteriaToSave
+                .map((item) => item.id || item.criteriaId)
+                .filter(Boolean);
 
-      console.log("📤 PROGRAM CRITERIA PAYLOAD:", JSON.stringify(payload, null, 2));
+              // Build payload for programCriteria API
+              const payload = {
+                patientAttributesId: patientAttributesId,
+                programsId: programId,
+                activeStatus: 1,
+                programName: programName,
+              };
 
-      // Call the programCriteria API
-      await smartReachApi.programCriteria(payload);
+              await smartReachApi.programCriteria(payload);
+              const updated = await smartReachApi.getSelectedCriteria(
+                program.id,
+              );
+              setSelectedCriteria(sortAlphabetically(updated));
+              setHasChanges(true);
 
-      console.log("✅ PROGRAM CRITERIA POST SUCCESS");
+              shared.toast?.success?.("Program criteria updated successfully");
 
-      // Update the selected criteria list
-      const updated = await smartReachApi.getSelectedCriteria(program.id);
-      setSelectedCriteria(sortAlphabetically(updated));
-      setHasChanges(true);
-
-      shared.toast?.success?.("Program criteria updated successfully");
-
-      setDialog({
-        type: null,
-        open: false,
-        data: null,
-      });
-    } catch (error) {
-      console.error("❌ PROGRAM CRITERIA POST FAILED:", error);
-      shared.toast?.error?.(
-        apiErrorText(error, "Failed to update program criteria"),
-      );
-    } finally {
-      setDialogLoading(false);
-    }
-    return;
-  } else {
-    // Close without saving
-    setDialog({
-      type: null,
-      open: false,
-      data: null,
-    });
-    return;
-  }
-}
+              setDialog({
+                type: null,
+                open: false,
+                data: null,
+              });
+            } catch (error) {
+              console.error("❌ PROGRAM CRITERIA POST FAILED:", error);
+              shared.toast?.error?.(
+                apiErrorText(error, "Failed to update program criteria"),
+              );
+            } finally {
+              setDialogLoading(false);
+            }
+            return;
+          } else {
+            // Close without saving
+            setDialog({
+              type: null,
+              open: false,
+              data: null,
+            });
+            return;
+          }
+        }
         default: {
           const stringValues = values
             .map((item) => {
@@ -1596,8 +1476,6 @@ case "displayCriteria": {
             smartReachApi.updateGenericCriteria?.(payload) || Promise.resolve();
         }
       }
-
-      console.log(`📤 ${type} Payload:`, JSON.stringify(payload, null, 2));
 
       if (apiCall) await apiCall;
 
@@ -1653,10 +1531,7 @@ case "displayCriteria": {
     }
   };
 
-  // ============================================================
   // CRITERIA EDIT HANDLER
-  // ============================================================
-
   const editCriteria = async (criteria) => {
     const name = criteria.name?.toLowerCase() || "";
     const criteriaId = Number(criteria.id || criteria.criteriaId);
@@ -1781,13 +1656,7 @@ case "displayCriteria": {
 
           // Put all codes in selectedList
           selectedList = codes;
-          // availableList is ALWAYS empty for patient zip (user adds via input field)
           availableList = [];
-
-          console.log(
-            `📊 patientZipCodeHadCriteria - Selected (from API):`,
-            selectedList,
-          );
         }
         // In the fetchListData function, update the race handling
         if (type === "raceTypeHadCriteria") {
@@ -1859,9 +1728,6 @@ case "displayCriteria": {
               String(item),
           }));
         }
-
-        console.log(`📊 ${type} - Available:`, availableList);
-        console.log(`📊 ${type} - Selected:`, selectedList);
 
         openDialog(type, {
           ...dialogData,
@@ -2078,33 +1944,30 @@ case "displayCriteria": {
     }
   };
 
-  // ============================================================
   // PICKERS
-  // ============================================================
-
   const openCriteriaPicker = async () => {
-  setDialogLoading(true);
-  try {
-    const [allCriteria, selected] = await Promise.all([
-      smartReachApi.getCriteria(),
-      smartReachApi.getSelectedCriteria(program.id),
-    ]);
-    
-    // Open the DisplayCriteria dialog
-    openDialog("displayCriteria", {
-      availableData: allCriteria || [],
-      selectedData: selected || [],
-      // Pass additional context
-      programId: program.id,
-      programName: programInfo?.programName || program?.name || "",
-      requestAppFrom: REQUEST_FROM,
-    });
-  } catch (error) {
-    shared.toast?.error?.(apiErrorText(error, "Failed to load criteria"));
-  } finally {
-    setDialogLoading(false);
-  }
-};
+    setDialogLoading(true);
+    try {
+      const [allCriteria, selected] = await Promise.all([
+        smartReachApi.getCriteria(),
+        smartReachApi.getSelectedCriteria(program.id),
+      ]);
+
+      // Open the DisplayCriteria dialog
+      openDialog("displayCriteria", {
+        availableData: allCriteria || [],
+        selectedData: selected || [],
+        // Pass additional context
+        programId: program.id,
+        programName: programInfo?.programName || program?.name || "",
+        requestAppFrom: REQUEST_FROM,
+      });
+    } catch (error) {
+      shared.toast?.error?.(apiErrorText(error, "Failed to load criteria"));
+    } finally {
+      setDialogLoading(false);
+    }
+  };
 
   const openScheduledActionPicker = async () => {
     setDialogLoading(true);
@@ -2114,9 +1977,6 @@ case "displayCriteria": {
         smartReachApi.getScheduledActions(),
         smartReachApi.getSelectedActions(program.id),
       ]);
-
-      console.log("📊 All Actions:", allActions);
-      console.log("📊 Selected Actions:", selectedActions);
 
       // Map the actions to ensure they have the correct structure
       const availableActions = (allActions || []).map((action) => ({
@@ -2139,9 +1999,6 @@ case "displayCriteria": {
         description: action.description || action.name || "",
         ...action,
       }));
-
-      console.log("📊 Normalized Available Actions:", availableActions);
-      console.log("📊 Normalized Selected Actions:", selectedActionList);
 
       openDialog("displayLocation", {
         availableData: availableActions,
@@ -2178,9 +2035,6 @@ case "displayCriteria": {
       firstMsg.value ||
       "";
 
-    console.log("📤 Current message text:", currentMessage);
-    console.log("📤 Full message object:", firstMsg);
-
     // ✅ Directly set dialog state to ensure messageDynamicText is at top level
     setDialog({
       type: "messageText",
@@ -2193,10 +2047,7 @@ case "displayCriteria": {
     });
   };
 
-  // ============================================================
   // UPDATE & CLOSE
-  // ============================================================
-
   const handleUpdate = async () => {
     setSaving(true);
     try {
@@ -2222,48 +2073,48 @@ case "displayCriteria": {
       setSaving(false);
     }
   };
-// Update the handleClose and handleDiscardConfirm functions
+  // Update the handleClose and handleDiscardConfirm functions
 
-const handleDiscardConfirm = (confirmed) => {
-  setConfirmDiscard(false);
-  
-  if (!confirmed) {
-    return;
-  }
-  
-  setIsClosing(true);
-  
-  setTimeout(() => {
-    setIsClosing(false);
-    // ✅ Use onCancel if provided, otherwise use onClose
-    if (onCancel) {
-      onCancel();
-    } else {
-      onClose?.();
+  const handleDiscardConfirm = (confirmed) => {
+    setConfirmDiscard(false);
+
+    if (!confirmed) {
+      return;
     }
-  }, 300);
-};
 
-const handleClose = () => {
-  // If there are unsaved changes, show ConfirmDialog
-  if (hasChanges) {
-    setConfirmDiscard(true);
-    return;
-  }
+    setIsClosing(true);
 
-  // No changes, close directly
-  setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      // ✅ Use onCancel if provided, otherwise use onClose
+      if (onCancel) {
+        onCancel();
+      } else {
+        onClose?.();
+      }
+    }, 300);
+  };
 
-  setTimeout(() => {
-    setIsClosing(false);
-    // ✅ Use onCancel if provided, otherwise use onClose
-    if (onCancel) {
-      onCancel();
-    } else {
-      onClose?.();
+  const handleClose = () => {
+    // If there are unsaved changes, show ConfirmDialog
+    if (hasChanges) {
+      setConfirmDiscard(true);
+      return;
     }
-  }, 300);
-};
+
+    // No changes, close directly
+    setIsClosing(true);
+
+    setTimeout(() => {
+      setIsClosing(false);
+      // ✅ Use onCancel if provided, otherwise use onClose
+      if (onCancel) {
+        onCancel();
+      } else {
+        onClose?.();
+      }
+    }, 300);
+  };
 
   // ============================================================
   // FETCH DATA
@@ -2389,9 +2240,15 @@ const handleClose = () => {
     }
   };
 
-  useEffect(() => {
-    if (program) fetchData();
-  }, [program]);
+ useEffect(() => {
+  if (!program) return;
+
+  const loadProgramData = async () => {
+    await fetchData();
+  };
+
+  loadProgramData();
+}, [program]);
 
   // ============================================================
   // RENDER
@@ -2399,14 +2256,12 @@ const handleClose = () => {
 
   if (!program) return null;
 
-// ✅ Use programInfo.threshold instead of programThreshold
-const thresholdValue = Number(programInfo?.threshold) || 0;
-// ✅ Divide by 40000 (or totalPatients if needed)
-const baseValue = 40000; // Hardcoded as per requirement
-const allocationPercent =
-  baseValue > 0
-    ? ((thresholdValue / baseValue) * 100).toFixed(2)
-    : "0.00";
+  // ✅ Use programInfo.threshold instead of programThreshold
+  const thresholdValue = Number(programInfo?.threshold) || 0;
+  // ✅ Divide by 40000 (or totalPatients if needed)
+  const baseValue = 40000; // Hardcoded as per requirement
+  const allocationPercent =
+    baseValue > 0 ? ((thresholdValue / baseValue) * 100).toFixed(2) : "0.00";
   const busy = dialogLoading || saving || isClosing;
   const renderCriteriaItem = (criteria, label) => {
     const name = criteria.name?.toLowerCase() || "";
@@ -3110,21 +2965,24 @@ const allocationPercent =
         data={dialog.data}
         onClose={handleDialogClose}
       />
-  <ConfirmDialog 
-  open={confirmDiscard} 
-  data={{ title: SR_TEXT.WARNING_TITLE, message: SR_TEXT.WARNING_MESSAGE }} 
-  onClose={(confirmed) => {
-    setConfirmDiscard(false);
-    if (confirmed) {
-      // ✅ Use onCancel if provided, otherwise use onClose
-      if (onCancel) {
-        onCancel();
-      } else {
-        onClose?.();
-      }
-    }
-  }} 
-/>
+      <ConfirmDialog
+        open={confirmDiscard}
+        data={{
+          title: SR_TEXT.WARNING_TITLE,
+          message: SR_TEXT.WARNING_MESSAGE,
+        }}
+        onClose={(confirmed) => {
+          setConfirmDiscard(false);
+          if (confirmed) {
+            // ✅ Use onCancel if provided, otherwise use onClose
+            if (onCancel) {
+              onCancel();
+            } else {
+              onClose?.();
+            }
+          }
+        }}
+      />
     </>
   );
 };
