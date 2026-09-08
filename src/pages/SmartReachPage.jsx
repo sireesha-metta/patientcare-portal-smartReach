@@ -1,4 +1,5 @@
-// SmartReachPage.jsx - Updated to use CreateProgram modal
+// SmartReachPage.jsx - Updated with API refresh after status change
+
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useSharedUi } from "patientcare-portal-sharedui/useSharedUi";
 import DataGrid from "patientcare-portal-sharedui/DataGrid";
@@ -262,6 +263,7 @@ export default function SmartReachPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [detailsModal, setDetailsModal] = useState({ open: false, program: null });
   const [confirmDelete, setConfirmDelete] = useState({ open: false, program: null });
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   const loadPrograms = useCallback(async () => {
     try {
@@ -277,10 +279,12 @@ export default function SmartReachPage() {
         description: program.description ?? "",
       }));
       setProgramData(mappedData);
+      return mappedData;
     } catch (error) {
       console.error("Error fetching programs:", error);
       setProgramData([]);
       shared.toast?.error?.(error?.message || "Failed to load programs");
+      return [];
     } finally {
       setLoading(false);
     }
@@ -292,24 +296,64 @@ export default function SmartReachPage() {
 
   const refreshPrograms = () => {
     setLoading(true);
-    loadPrograms();
+    return loadPrograms();
   };
 
+  // Updated handleStatusChange with API refresh after status change
   const handleStatusChange = useCallback(async (programId, newStatus) => {
     const status = Number(newStatus);
+    
+    // Find the current program to check its current status
+    const currentProgram = programData.find(p => p.id === String(programId));
+    if (!currentProgram) {
+      shared.toast?.error?.("Program not found");
+      return;
+    }
+
+    // Validate if status change is allowed (similar to Angular's disabled logic)
+    const currentStatus = String(currentProgram.status);
+    
+    // Check if this status change is disabled
+    const isDisabled = (() => {
+      // If program is In Build (3), only allow In Build (3)
+      if (currentStatus === '3' && status !== 3) return true;
+      // If program is Active (1), allow Active (1) and Inactive (0)
+      if (currentStatus === '1' && !(status === 1 || status === 0)) return true;
+      // If program is Inactive (0), allow Inactive (0) and Active (1) 
+      if (currentStatus === '0' && !(status === 0 || status === 1)) return true;
+      // If program is Testing (2), allow Testing (2)
+      if (currentStatus === '2' && status !== 2) return true;
+      return false;
+    })();
+
+    if (isDisabled) {
+      shared.toast?.warning?.("This status change is not allowed for the current program state");
+      // Refresh to reset the dropdown
+      await refreshPrograms();
+      return;
+    }
+
+    // Prevent multiple simultaneous status updates
+    if (isStatusUpdating) return;
+    setIsStatusUpdating(true);
+
     try {
+      // Call the API with the correct payload format
       await smartReachApi.updateProgramStatus(programId, status);
-      setProgramData((prev) =>
-        prev.map((program) =>
-          program.id === String(programId) ? { ...program, status } : program
-        )
-      );
+      
+      // Call the practice program API to refresh the data
+      await refreshPrograms();
+      
       shared.toast?.success?.("Program status updated successfully");
     } catch (error) {
       console.error("Failed to update program status:", error);
       shared.toast?.error?.(error?.response?.data?.message || error?.message || "Failed to update program status");
+      // Refresh to reset the dropdown to the correct state
+      await refreshPrograms();
+    } finally {
+      setIsStatusUpdating(false);
     }
-  }, [shared]);
+  }, [shared, programData, isStatusUpdating, refreshPrograms]);
 
   const onProgramSaved = () => {
     setEditor(closedEditor);
@@ -323,8 +367,7 @@ export default function SmartReachPage() {
 
     try {
       await smartReachApi.deleteProgram(Number(program.id));
-      await loadPrograms();
-      setProgramData((prev) => prev.filter((p) => p.id !== program.id));
+      await refreshPrograms();
       shared.toast?.success?.("Program deleted successfully");
     } catch (error) {
       console.error("Failed to delete program:", error);
@@ -335,6 +378,32 @@ export default function SmartReachPage() {
   // Handle Create New Program - opens modal
   const handleCreateProgram = () => {
     setCreateModalOpen(true);
+  };
+
+  // Get status color for dropdown styling
+  const getStatusColor = (statusValue) => {
+    const status = Number(statusValue);
+    if (status === 3) return "text-yellow-600";
+    if (status === 2) return "text-blue-600";
+    if (status === 1) return "text-green-600";
+    return "text-slate-700";
+  };
+
+  // Check if status option should be disabled (matching Angular logic)
+  const isStatusDisabled = (program, optionValue) => {
+    const currentStatus = String(program.status);
+    const newStatus = Number(optionValue);
+
+    // In Build (3) - only In Build allowed
+    if (currentStatus === '3' && newStatus !== 3) return true;
+    // Active (1) - only Active and Inactive allowed
+    if (currentStatus === '1' && !(newStatus === 1 || newStatus === 0)) return true;
+    // Inactive (0) - only Inactive and Active allowed
+    if (currentStatus === '0' && !(newStatus === 0 || newStatus === 1)) return true;
+    // Testing (2) - only Testing allowed
+    if (currentStatus === '2' && newStatus !== 2) return true;
+    
+    return false;
   };
 
   const columns = useMemo(
@@ -364,27 +433,40 @@ export default function SmartReachPage() {
       {
         field: "status",
         headerName: "Status",
-        width: 150,
-        minWidth: 150,
+        width: 180,
+        minWidth: 180,
         sortable: true,
         filter: true,
         cellRenderer: (params) => {
           const statusValue = Number(params.value);
+          const program = params.data;
+          
           return (
             <select
               value={statusValue}
-              onChange={(event) => handleStatusChange(params.data.id, event.target.value)}
+              onChange={(event) => {
+                event.stopPropagation();
+                const newStatus = Number(event.target.value);
+                handleStatusChange(program.id, newStatus);
+              }}
               onClick={(event) => event.stopPropagation()}
+              disabled={isStatusUpdating}
               className={`cursor-pointer rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm outline-none hover:border-slate-300 focus:border-slate-300 ${
-                statusValue === 3 ? "text-yellow-600" :
-                statusValue === 2 ? "text-blue-600" :
-                statusValue === 1 ? "text-green-600" :
-                "text-slate-700"
-              }`}
+                isStatusUpdating ? 'opacity-50 cursor-not-allowed' : ''
+              } ${getStatusColor(statusValue)}`}
             >
-              {STATUS_OPTIONS.map((status) => (
-                <option key={status.value} value={status.value}>{status.label}</option>
-              ))}
+              {STATUS_OPTIONS.map((status) => {
+                const isDisabled = isStatusDisabled(program, status.value);
+                return (
+                  <option 
+                    key={status.value} 
+                    value={status.value}
+                    disabled={isDisabled}
+                  >
+                    {status.label}
+                  </option>
+                );
+              })}
             </select>
           );
         },
@@ -407,7 +489,7 @@ export default function SmartReachPage() {
         ),
       },
     ],
-    [handleStatusChange]
+    [handleStatusChange, isStatusUpdating]
   );
 
   const navItems = useMemo(
@@ -463,7 +545,7 @@ export default function SmartReachPage() {
             <button
               type="button"
               onClick={refreshPrograms}
-              disabled={loading}
+              disabled={loading || isStatusUpdating}
               className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-emerald-700 transition disabled:opacity-60"
             >
               <svg className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -479,7 +561,7 @@ export default function SmartReachPage() {
           data={programData}
           fileName="programs-export"
           pageSize={10}
-          loading={loading}
+          loading={loading || isStatusUpdating}
           quickFilterPlaceholder="Search Program..."
           overlayNoRowsTemplate="No Programs Found."
           getRowId={(params) => String(params.data.id)}

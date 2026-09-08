@@ -13,6 +13,8 @@ import {
 import { useSharedUi } from "patientcare-portal-sharedui/useSharedUi";
 import smartReachApi from "../services/smartReachApi";
 import { apiErrorText } from "../utils/apiErrorText";
+import ConfirmDialog from "patientcare-portal-sharedui/ConfirmDialog";
+
 
 // Import shared UI components
 import DisplayCriteria from "patientcare-portal-sharedui/DisplayCriteria";
@@ -172,14 +174,14 @@ const normalizeListItem = (item) => ({
 // MAIN COMPONENT
 // ============================================================
 
-const ProgramDetailsEdit = ({ program, onClose, onUpdate }) => {
+const ProgramDetailsEdit = ({ program, onClose, onUpdate,onCancel }) => {
   const shared = useSharedUi();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [dialogLoading, setDialogLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-
+const [confirmDiscard, setConfirmDiscard] = useState(false);
   // State
   const [programInfo, setProgramInfo] = useState(null);
   const [selectedCriteria, setSelectedCriteria] = useState([]);
@@ -187,6 +189,9 @@ const ProgramDetailsEdit = ({ program, onClose, onUpdate }) => {
   const [selectedScheduledActions, setSelectedScheduledActions] = useState([]);
   const [programTextMsgInfo, setProgramTextMsgInfo] = useState([]);
   const [programThreshold, setProgramThreshold] = useState(0);
+  const [totalTextLimit, setTotalTextLimit] = useState(0);
+  const [remainingTextLimit, setRemainingTextLimit] = useState(0);
+  const [remainingTotalTextLimit, setRemainingTotalTextLimit] = useState(0);
   const [actionDetailDialog, setActionDetailDialog] = useState({
     open: false,
     type: null, // 'activity', 'location', 'provider'
@@ -214,7 +219,60 @@ const ProgramDetailsEdit = ({ program, onClose, onUpdate }) => {
   // SELECTION RULES FOR ACTION DETAILS - AUTO REPLACE
   // ============================================================
 
-  // Create selection rules for single selection with auto-replace
+  const getPracticeSumOfProgramThreshold = async (
+    currentProgramThreshold = 0,
+  ) => {
+    try {
+      const userDetails = shared.userDetails;
+      const practiceRole = userDetails?.roles?.practicerole?.[0];
+
+      const practiceTextLimit = Number(practiceRole?.practiceTextLimit || 0);
+
+      setTotalTextLimit(practiceTextLimit);
+
+      const response = await smartReachApi.getProgramThreshold();
+
+      // API returns the sum of thresholds of programs
+      const usedThreshold = Number(response || 0);
+
+      // Same as Angular:
+      // remainTextLimit = totalTextLimit - resp
+      const remaining = Math.max(practiceTextLimit - usedThreshold, 0);
+
+      // When editing the current program, add its existing
+      // threshold back because it is already included in the API sum.
+      const remainingForCurrentProgram = Math.max(
+        practiceTextLimit +
+          Number(currentProgramThreshold || 0) -
+          usedThreshold,
+        0,
+      );
+
+      setRemainingTextLimit(remaining);
+      setRemainingTotalTextLimit(remainingForCurrentProgram);
+
+      console.log("📊 Practice Text Limit:", practiceTextLimit);
+      console.log("📊 Used Program Threshold:", usedThreshold);
+      console.log("📊 Current Program Threshold:", currentProgramThreshold);
+      console.log("📊 Remaining Text Limit:", remaining);
+      console.log("📊 Remaining Total Text Limit:", remainingForCurrentProgram);
+
+      return {
+        practiceTextLimit,
+        usedThreshold,
+        remaining,
+        remainingForCurrentProgram,
+      };
+    } catch (error) {
+      console.error("❌ Failed to get practice program threshold:", error);
+
+      shared.toast?.error?.(
+        apiErrorText(error, "Failed to load remaining text limit"),
+      );
+
+      return null;
+    }
+  };
   const getSingleSelectRules = () => ({
     // Always allow selection
     validateSelect: () => null,
@@ -245,368 +303,367 @@ const ProgramDetailsEdit = ({ program, onClose, onUpdate }) => {
     },
   });
   const openActionDetailPicker = async (action, type) => {
-  setDialogLoading(true);
-  try {
-    const programActionId = action.id || action.actionId || action.action_id;
-    const programId = program.id;
+    setDialogLoading(true);
+    try {
+      const programActionId = action.id || action.actionId || action.action_id;
+      const programId = program.id;
 
-    if (!programActionId) {
-      shared.toast?.error?.("Invalid action ID");
+      if (!programActionId) {
+        shared.toast?.error?.("Invalid action ID");
+        setDialogLoading(false);
+        return;
+      }
+
+      console.log(`🔍 Opening ${type} detail for action ID:`, programActionId);
+      console.log(`🔍 Program ID:`, programId);
+
+      let availableData = [];
+      let selectedData = [];
+      let title = "";
+      let configureLabel = "";
+      const singleSelectRules = getSingleSelectRules();
+
+      switch (type) {
+        case "activity": {
+          const response = await smartReachApi.getActivities(
+            programActionId,
+            programId,
+          );
+
+          console.log(`📊 Raw Activity Response:`, response);
+
+          // Handle different response structures
+          let availableList = [];
+          let selectedList = [];
+
+          if (Array.isArray(response)) {
+            if (response.length > 0 && response[0]?.availableList) {
+              // Format: [{ availableList: [...], selectedList: [...] }]
+              availableList = response[0].availableList || [];
+              selectedList = response[0].selectedList || [];
+            } else {
+              // Format: plain array of items
+              // All items are available if no selected list is provided
+              availableList = response;
+              selectedList = [];
+            }
+          } else if (response?.availableList) {
+            availableList = response.availableList || [];
+            selectedList = response.selectedList || [];
+          }
+
+          // Normalize available data
+          availableData = (availableList || []).map((item) => ({
+            ...item,
+            id: item.id || item.activity_id || item.activityId,
+            name:
+              item.display_name || item.name || item.activity_name || "Unnamed",
+            display_name: item.display_name || item.name || item.activity_name,
+          }));
+
+          // Normalize selected data
+          selectedData = (selectedList || []).map((item) => ({
+            ...item,
+            id: item.id || item.activity_id || item.activityId,
+            name:
+              item.display_name || item.name || item.activity_name || "Unnamed",
+            display_name: item.display_name || item.name || item.activity_name,
+          }));
+
+          // If selectedData is empty but action.value has IDs, try to match them
+          if (
+            selectedData.length === 0 &&
+            action.value &&
+            Array.isArray(action.value)
+          ) {
+            selectedData = availableData.filter((item) =>
+              action.value.includes(String(item.id)),
+            );
+          }
+
+          title = "Configure Appointment Type";
+          configureLabel = "Appointment Type";
+          break;
+        }
+
+        case "location": {
+          const response = await smartReachApi.getActionLocations(
+            programActionId,
+            programId,
+          );
+
+          console.log(`📊 Raw Location Response:`, response);
+
+          let availableList = [];
+          let selectedList = [];
+
+          if (Array.isArray(response)) {
+            if (response.length > 0 && response[0]?.availableList) {
+              availableList = response[0].availableList || [];
+              selectedList = response[0].selectedList || [];
+            } else {
+              availableList = response;
+              selectedList = [];
+            }
+          } else if (response?.availableList) {
+            availableList = response.availableList || [];
+            selectedList = response.selectedList || [];
+          }
+
+          availableData = (availableList || []).map((item) => ({
+            ...item,
+            id: item.id || item.location_id || item.locationId,
+            name:
+              item.display_name || item.name || item.location_name || "Unnamed",
+            display_name: item.display_name || item.name || item.location_name,
+          }));
+
+          selectedData = (selectedList || []).map((item) => ({
+            ...item,
+            id: item.id || item.location_id || item.locationId,
+            name:
+              item.display_name || item.name || item.location_name || "Unnamed",
+            display_name: item.display_name || item.name || item.location_name,
+          }));
+
+          if (
+            selectedData.length === 0 &&
+            action.value &&
+            Array.isArray(action.value)
+          ) {
+            selectedData = availableData.filter((item) =>
+              action.value.includes(String(item.id)),
+            );
+          }
+
+          title = "Configure Location";
+          configureLabel = "Location";
+          break;
+        }
+
+        case "provider": {
+          const response = await smartReachApi.getActionProviders(
+            programActionId,
+            programId,
+          );
+
+          console.log(`📊 Raw Provider Response:`, response);
+
+          let availableList = [];
+          let selectedList = [];
+
+          if (Array.isArray(response)) {
+            if (response.length > 0 && response[0]?.availableList) {
+              availableList = response[0].availableList || [];
+              selectedList = response[0].selectedList || [];
+            } else {
+              availableList = response;
+              selectedList = [];
+            }
+          } else if (response?.availableList) {
+            availableList = response.availableList || [];
+            selectedList = response.selectedList || [];
+          }
+
+          availableData = (availableList || []).map((item) => ({
+            ...item,
+            id: item.id || item.provider_id || item.providerId,
+            name:
+              item.display_name || item.name || item.provider_name || "Unnamed",
+            display_name: item.display_name || item.name || item.provider_name,
+          }));
+
+          selectedData = (selectedList || []).map((item) => ({
+            ...item,
+            id: item.id || item.provider_id || item.providerId,
+            name:
+              item.display_name || item.name || item.provider_name || "Unnamed",
+            display_name: item.display_name || item.name || item.provider_name,
+          }));
+
+          if (
+            selectedData.length === 0 &&
+            action.value &&
+            Array.isArray(action.value)
+          ) {
+            selectedData = availableData.filter((item) =>
+              action.value.includes(String(item.id)),
+            );
+          }
+
+          title = "Configure Provider";
+          configureLabel = "Provider";
+          break;
+        }
+
+        default:
+          shared.toast?.error?.(`Unknown action type: ${type}`);
+          setDialogLoading(false);
+          return;
+      }
+
+      console.log(`📊 ${type} - Available:`, availableData);
+      console.log(`📊 ${type} - Selected:`, selectedData);
+
+      // Remove selected items from available list to avoid duplicates
+      const selectedIds = new Set(selectedData.map((item) => String(item.id)));
+      const filteredAvailable = availableData.filter(
+        (item) => !selectedIds.has(String(item.id)),
+      );
+
+      setActionDetailDialog({
+        open: true,
+        type: type,
+        action: action,
+        data: {
+          availableData: filteredAvailable,
+          selectedData: selectedData,
+          title: title,
+          configureLabel: configureLabel,
+          actionId: programActionId,
+          programId: programId,
+          programName: programInfo?.programName || program?.name || "",
+          requestAppFrom: REQUEST_FROM,
+          selectionRules: singleSelectRules,
+        },
+      });
+    } catch (error) {
+      console.error(`❌ Error loading ${type} details:`, error);
+      shared.toast?.error?.(
+        apiErrorText(error, `Failed to load ${type} details`),
+      );
+    } finally {
       setDialogLoading(false);
+    }
+  };
+
+  const handleActionDetailClose = async (result) => {
+    if (!result) {
+      setActionDetailDialog({
+        open: false,
+        type: null,
+        data: null,
+        action: null,
+      });
       return;
     }
 
-    console.log(`🔍 Opening ${type} detail for action ID:`, programActionId);
-    console.log(`🔍 Program ID:`, programId);
-
-    let availableData = [];
-    let selectedData = [];
-    let title = "";
-    let configureLabel = "";
-    const singleSelectRules = getSingleSelectRules();
-
-    switch (type) {
-      case "activity": {
-        const response = await smartReachApi.getActivities(
-          programActionId,
-          programId,
-        );
-
-        console.log(`📊 Raw Activity Response:`, response);
-
-        // Handle different response structures
-        let availableList = [];
-        let selectedList = [];
-
-        if (Array.isArray(response)) {
-          if (response.length > 0 && response[0]?.availableList) {
-            // Format: [{ availableList: [...], selectedList: [...] }]
-            availableList = response[0].availableList || [];
-            selectedList = response[0].selectedList || [];
-          } else {
-            // Format: plain array of items
-            // All items are available if no selected list is provided
-            availableList = response;
-            selectedList = [];
-          }
-        } else if (response?.availableList) {
-          availableList = response.availableList || [];
-          selectedList = response.selectedList || [];
-        }
-
-        // Normalize available data
-        availableData = (availableList || []).map((item) => ({
-          ...item,
-          id: item.id || item.activity_id || item.activityId,
-          name: item.display_name || item.name || item.activity_name || "Unnamed",
-          display_name: item.display_name || item.name || item.activity_name,
-        }));
-
-        // Normalize selected data
-        selectedData = (selectedList || []).map((item) => ({
-          ...item,
-          id: item.id || item.activity_id || item.activityId,
-          name: item.display_name || item.name || item.activity_name || "Unnamed",
-          display_name: item.display_name || item.name || item.activity_name,
-        }));
-
-        // If selectedData is empty but action.value has IDs, try to match them
-        if (selectedData.length === 0 && action.value && Array.isArray(action.value)) {
-          selectedData = availableData.filter((item) =>
-            action.value.includes(String(item.id))
-          );
-        }
-
-        title = "Configure Appointment Type";
-        configureLabel = "Appointment Type";
-        break;
-      }
-
-      case "location": {
-        const response = await smartReachApi.getActionLocations(
-          programActionId,
-          programId,
-        );
-
-        console.log(`📊 Raw Location Response:`, response);
-
-        let availableList = [];
-        let selectedList = [];
-
-        if (Array.isArray(response)) {
-          if (response.length > 0 && response[0]?.availableList) {
-            availableList = response[0].availableList || [];
-            selectedList = response[0].selectedList || [];
-          } else {
-            availableList = response;
-            selectedList = [];
-          }
-        } else if (response?.availableList) {
-          availableList = response.availableList || [];
-          selectedList = response.selectedList || [];
-        }
-
-        availableData = (availableList || []).map((item) => ({
-          ...item,
-          id: item.id || item.location_id || item.locationId,
-          name: item.display_name || item.name || item.location_name || "Unnamed",
-          display_name: item.display_name || item.name || item.location_name,
-        }));
-
-        selectedData = (selectedList || []).map((item) => ({
-          ...item,
-          id: item.id || item.location_id || item.locationId,
-          name: item.display_name || item.name || item.location_name || "Unnamed",
-          display_name: item.display_name || item.name || item.location_name,
-        }));
-
-        if (selectedData.length === 0 && action.value && Array.isArray(action.value)) {
-          selectedData = availableData.filter((item) =>
-            action.value.includes(String(item.id))
-          );
-        }
-
-        title = "Configure Location";
-        configureLabel = "Location";
-        break;
-      }
-
-      case "provider": {
-        const response = await smartReachApi.getActionProviders(
-          programActionId,
-          programId,
-        );
-
-        console.log(`📊 Raw Provider Response:`, response);
-
-        let availableList = [];
-        let selectedList = [];
-
-        if (Array.isArray(response)) {
-          if (response.length > 0 && response[0]?.availableList) {
-            availableList = response[0].availableList || [];
-            selectedList = response[0].selectedList || [];
-          } else {
-            availableList = response;
-            selectedList = [];
-          }
-        } else if (response?.availableList) {
-          availableList = response.availableList || [];
-          selectedList = response.selectedList || [];
-        }
-
-        availableData = (availableList || []).map((item) => ({
-          ...item,
-          id: item.id || item.provider_id || item.providerId,
-          name: item.display_name || item.name || item.provider_name || "Unnamed",
-          display_name: item.display_name || item.name || item.provider_name,
-        }));
-
-        selectedData = (selectedList || []).map((item) => ({
-          ...item,
-          id: item.id || item.provider_id || item.providerId,
-          name: item.display_name || item.name || item.provider_name || "Unnamed",
-          display_name: item.display_name || item.name || item.provider_name,
-        }));
-
-        if (selectedData.length === 0 && action.value && Array.isArray(action.value)) {
-          selectedData = availableData.filter((item) =>
-            action.value.includes(String(item.id))
-          );
-        }
-
-        title = "Configure Provider";
-        configureLabel = "Provider";
-        break;
-      }
-
-      default:
-        shared.toast?.error?.(`Unknown action type: ${type}`);
-        setDialogLoading(false);
-        return;
+    if (result.action === "close") {
+      setActionDetailDialog({
+        open: false,
+        type: null,
+        data: null,
+        action: null,
+      });
+      return;
     }
 
-    console.log(`📊 ${type} - Available:`, availableData);
-    console.log(`📊 ${type} - Selected:`, selectedData);
+    // Get selected values returned by the dialog
+    let values = result.values || result.selected || [];
 
-    // Remove selected items from available list to avoid duplicates
-    const selectedIds = new Set(selectedData.map(item => String(item.id)));
-    const filteredAvailable = availableData.filter(
-      item => !selectedIds.has(String(item.id))
-    );
-
-    setActionDetailDialog({
-      open: true,
-      type: type,
-      action: action,
-      data: {
-        availableData: filteredAvailable,
-        selectedData: selectedData,
-        title: title,
-        configureLabel: configureLabel,
-        actionId: programActionId,
-        programId: programId,
-        programName: programInfo?.programName || program?.name || "",
-        requestAppFrom: REQUEST_FROM,
-        selectionRules: singleSelectRules,
-      },
-    });
-  } catch (error) {
-    console.error(`❌ Error loading ${type} details:`, error);
-    shared.toast?.error?.(
-      apiErrorText(error, `Failed to load ${type} details`),
-    );
-  } finally {
-    setDialogLoading(false);
-  }
-};
-
- const handleActionDetailClose = async (result) => {
-  if (!result) {
-    setActionDetailDialog({
-      open: false,
-      type: null,
-      data: null,
-      action: null,
-    });
-    return;
-  }
-
-  if (result.action === "close") {
-    setActionDetailDialog({
-      open: false,
-      type: null,
-      data: null,
-      action: null,
-    });
-    return;
-  }
-
-  // Get selected values returned by the dialog
-  let values = result.values || result.selected || [];
-
-  // If dialog returned nothing, use the data that was originally selected
-  if (values.length === 0 && actionDetailDialog.data?.selectedData) {
-    values = actionDetailDialog.data.selectedData;
-  }
-
-  const { type, action } = actionDetailDialog;
-
-  const programId = Number(program.id);
-  const programName =
-    programInfo?.programName || program?.name || "";
-
-  console.log("📊 Type:", type);
-  console.log("📊 Values from dialog:", values);
-  console.log("📊 Result object:", result);
-
-  setDialogLoading(true);
-
-  try {
-    let payload = {};
-    let apiCall;
-
-    switch (type) {
-      // --------------------------------------------------
-      // ACTIVITY
-      // --------------------------------------------------
-      case "activity": {
-        const selectedActivity = values?.[0];
-
-        console.log(
-          "🟢 Selected Activity:",
-          selectedActivity
-        );
-
-        payload = {
-          value: [selectedActivity?.id],
-          programId: programId,
-          programActionId: action.id,
-          activeStatus: 1,
-          activityName: selectedActivity?.name,
-          programName: programName,
-        };
-
-        apiCall =
-          smartReachApi.updateActionActivity(payload);
-
-        break;
-      }
-
-      // --------------------------------------------------
-      // LOCATION
-      // --------------------------------------------------
-      case "location": {
-        const selectedLocation = values?.[0];
-
-        console.log(
-          "📍 Selected Location:",
-          selectedLocation
-        );
-
-        payload = {
-          value: [selectedLocation?.id],
-          programId: programId,
-          programActionId: action.id,
-          activeStatus: 1,
-          locationName: selectedLocation?.name,
-          programName: programName,
-        };
-
-        apiCall =
-          smartReachApi.updateActionLocation(payload);
-
-        break;
-      }
-
-      // --------------------------------------------------
-      // PROVIDER
-      // --------------------------------------------------
-      case "provider": {
-        const selectedProvider = values?.[0];
-
-        console.log(
-          "👨‍⚕️ Selected Provider:",
-          selectedProvider
-        );
-
-        payload = {
-          value: [selectedProvider?.id],
-          programId: programId,
-          programActionId: action.id,
-          activeStatus: 1,
-          providerName: selectedProvider?.name,
-          programName: programName,
-        };
-
-        apiCall =
-          smartReachApi.updateActionProvider(payload);
-
-        break;
-      }
-
-      default:
-        return;
+    // If dialog returned nothing, use the data that was originally selected
+    if (values.length === 0 && actionDetailDialog.data?.selectedData) {
+      values = actionDetailDialog.data.selectedData;
     }
 
-    console.log(
-      `📤 ${type} Payload:`,
-      JSON.stringify(payload, null, 2)
-    );
+    const { type, action } = actionDetailDialog;
 
-    if (apiCall) {
-      await apiCall;
+    const programId = Number(program.id);
+    const programName = programInfo?.programName || program?.name || "";
 
-      // Refresh scheduled actions
-      const refreshedActions =
-        await smartReachApi.getSelectedActions(program.id);
+    console.log("📊 Type:", type);
+    console.log("📊 Values from dialog:", values);
+    console.log("📊 Result object:", result);
 
-      const normalized = (refreshedActions || []).map(
-        (action) => ({
-          id:
-            action.id ||
-            action.actionId ||
-            action.action_id,
+    setDialogLoading(true);
+
+    try {
+      let payload = {};
+      let apiCall;
+
+      switch (type) {
+        // --------------------------------------------------
+        // ACTIVITY
+        // --------------------------------------------------
+        case "activity": {
+          const selectedActivity = values?.[0];
+
+          console.log("🟢 Selected Activity:", selectedActivity);
+
+          payload = {
+            value: [selectedActivity?.id],
+            programId: programId,
+            programActionId: action.id,
+            activeStatus: 1,
+            activityName: selectedActivity?.name,
+            programName: programName,
+          };
+
+          apiCall = smartReachApi.updateActionActivity(payload);
+
+          break;
+        }
+
+        // --------------------------------------------------
+        // LOCATION
+        // --------------------------------------------------
+        case "location": {
+          const selectedLocation = values?.[0];
+
+          console.log("📍 Selected Location:", selectedLocation);
+
+          payload = {
+            value: [selectedLocation?.id],
+            programId: programId,
+            programActionId: action.id,
+            activeStatus: 1,
+            locationName: selectedLocation?.name,
+            programName: programName,
+          };
+
+          apiCall = smartReachApi.updateActionLocation(payload);
+
+          break;
+        }
+
+        // --------------------------------------------------
+        // PROVIDER
+        // --------------------------------------------------
+        case "provider": {
+          const selectedProvider = values?.[0];
+
+          console.log("👨‍⚕️ Selected Provider:", selectedProvider);
+
+          payload = {
+            value: [selectedProvider?.id],
+            programId: programId,
+            programActionId: action.id,
+            activeStatus: 1,
+            providerName: selectedProvider?.name,
+            programName: programName,
+          };
+
+          apiCall = smartReachApi.updateActionProvider(payload);
+
+          break;
+        }
+
+        default:
+          return;
+      }
+
+      console.log(`📤 ${type} Payload:`, JSON.stringify(payload, null, 2));
+
+      if (apiCall) {
+        await apiCall;
+
+        // Refresh scheduled actions
+        const refreshedActions = await smartReachApi.getSelectedActions(
+          program.id,
+        );
+
+        const normalized = (refreshedActions || []).map((action) => ({
+          id: action.id || action.actionId || action.action_id,
 
           name:
             action.name ||
@@ -615,40 +672,27 @@ const ProgramDetailsEdit = ({ program, onClose, onUpdate }) => {
             "Unnamed Action",
 
           ...action,
-        })
-      );
+        }));
 
-      setSelectedScheduledActions(
-        sortAlphabetically(normalized)
-      );
+        setSelectedScheduledActions(sortAlphabetically(normalized));
 
-      shared.toast?.success?.(
-        `${type} updated successfully`
-      );
+        shared.toast?.success?.(`${type} updated successfully`);
+      }
+    } catch (error) {
+      console.error(`❌ ${type} update failed:`, error);
+
+      shared.toast?.error?.(apiErrorText(error, `Failed to update ${type}`));
+    } finally {
+      setDialogLoading(false);
+
+      setActionDetailDialog({
+        open: false,
+        type: null,
+        data: null,
+        action: null,
+      });
     }
-  } catch (error) {
-    console.error(
-      `❌ ${type} update failed:`,
-      error
-    );
-
-    shared.toast?.error?.(
-      apiErrorText(
-        error,
-        `Failed to update ${type}`
-      )
-    );
-  } finally {
-    setDialogLoading(false);
-
-    setActionDetailDialog({
-      open: false,
-      type: null,
-      data: null,
-      action: null,
-    });
-  }
-};
+  };
   // ============================================================
   // HELPER FUNCTIONS
   // ============================================================
@@ -784,8 +828,7 @@ const ProgramDetailsEdit = ({ program, onClose, onUpdate }) => {
       !result.maxAge &&
       !result.minFrequency &&
       !result.maxFrequency &&
-          !result.values // ✅ Also check for message text
-
+      !result.values // ✅ Also check for message text
     ) {
       return closeDialog();
     }
@@ -1430,38 +1473,100 @@ const ProgramDetailsEdit = ({ program, onClose, onUpdate }) => {
         }
         // Add this case after the "displayLocation" case and before "default"
 
-// In handleDialogClose function - update the messageText case
-case "messageText": {
-  // ✅ Get the message from result.values (what MessageText returns)
-  // If result.values is an array, get the first item, otherwise use as-is
-  const messageText = Array.isArray(result.values) 
-    ? result.values[0] || "" 
-    : result.values || "";
-  
-  console.log("📤 Updating message text:", messageText);
-  
-  // Update the programTextMsgInfo state with the new message
-  if (programTextMsgInfo.length > 0) {
-    const updatedMessages = programTextMsgInfo.map((msg, idx) => {
-      if (idx === 0) {
-        return { ...msg, messageText: messageText };
-      }
-      return msg;
-    });
-    setProgramTextMsgInfo(updatedMessages);
-  } else {
-    // If no messages exist, create one
-    setProgramTextMsgInfo([{ 
-      messageText: messageText, 
-      programId: program.id 
-    }]);
-  }
-  
-  setHasChanges(true);
-  shared.toast?.success?.("Message text updated");
-  break;
-}
+        // In handleDialogClose function - update the messageText case
+        case "messageText": {
+          // ✅ Get the message from result.values (what MessageText returns)
+          // If result.values is an array, get the first item, otherwise use as-is
+          const messageText = Array.isArray(result.values)
+            ? result.values[0] || ""
+            : result.values || "";
 
+          console.log("📤 Updating message text:", messageText);
+
+          // Update the programTextMsgInfo state with the new message
+          if (programTextMsgInfo.length > 0) {
+            const updatedMessages = programTextMsgInfo.map((msg, idx) => {
+              if (idx === 0) {
+                return { ...msg, messageText: messageText };
+              }
+              return msg;
+            });
+            setProgramTextMsgInfo(updatedMessages);
+          } else {
+            // If no messages exist, create one
+            setProgramTextMsgInfo([
+              {
+                messageText: messageText,
+                programId: program.id,
+              },
+            ]);
+          }
+
+          setHasChanges(true);
+          shared.toast?.success?.("Message text updated");
+          break;
+        }
+// In handleDialogClose function - replace the displayCriteria case
+case "displayCriteria": {
+  // Handle both "next" and "submit" actions, or when action is not "close"
+  const isSaveAction = result?.action !== "close";
+  
+  if (isSaveAction && values) {
+    try {
+      setDialogLoading(true);
+
+      // Get the criteria IDs from the selected values
+      const criteriaToSave = Array.isArray(values) ? values : [];
+      const patientAttributesId = criteriaToSave
+        .map((item) => item.id || item.criteriaId)
+        .filter(Boolean);
+
+      // Build payload for programCriteria API
+      const payload = {
+        patientAttributesId: patientAttributesId,
+        programsId: programId,
+        activeStatus: 1,
+        programName: programName,
+      };
+
+      console.log("📤 PROGRAM CRITERIA PAYLOAD:", JSON.stringify(payload, null, 2));
+
+      // Call the programCriteria API
+      await smartReachApi.programCriteria(payload);
+
+      console.log("✅ PROGRAM CRITERIA POST SUCCESS");
+
+      // Update the selected criteria list
+      const updated = await smartReachApi.getSelectedCriteria(program.id);
+      setSelectedCriteria(sortAlphabetically(updated));
+      setHasChanges(true);
+
+      shared.toast?.success?.("Program criteria updated successfully");
+
+      setDialog({
+        type: null,
+        open: false,
+        data: null,
+      });
+    } catch (error) {
+      console.error("❌ PROGRAM CRITERIA POST FAILED:", error);
+      shared.toast?.error?.(
+        apiErrorText(error, "Failed to update program criteria"),
+      );
+    } finally {
+      setDialogLoading(false);
+    }
+    return;
+  } else {
+    // Close without saving
+    setDialog({
+      type: null,
+      open: false,
+      data: null,
+    });
+    return;
+  }
+}
         default: {
           const stringValues = values
             .map((item) => {
@@ -1978,22 +2083,28 @@ case "messageText": {
   // ============================================================
 
   const openCriteriaPicker = async () => {
-    setDialogLoading(true);
-    try {
-      const [allCriteria, selected] = await Promise.all([
-        smartReachApi.getCriteria(),
-        smartReachApi.getSelectedCriteria(program.id),
-      ]);
-      openDialog("displayCriteria", {
-        availableData: allCriteria || [],
-        selectedData: selected || [],
-      });
-    } catch (error) {
-      shared.toast?.error?.(apiErrorText(error, "Failed to load criteria"));
-    } finally {
-      setDialogLoading(false);
-    }
-  };
+  setDialogLoading(true);
+  try {
+    const [allCriteria, selected] = await Promise.all([
+      smartReachApi.getCriteria(),
+      smartReachApi.getSelectedCriteria(program.id),
+    ]);
+    
+    // Open the DisplayCriteria dialog
+    openDialog("displayCriteria", {
+      availableData: allCriteria || [],
+      selectedData: selected || [],
+      // Pass additional context
+      programId: program.id,
+      programName: programInfo?.programName || program?.name || "",
+      requestAppFrom: REQUEST_FROM,
+    });
+  } catch (error) {
+    shared.toast?.error?.(apiErrorText(error, "Failed to load criteria"));
+  } finally {
+    setDialogLoading(false);
+  }
+};
 
   const openScheduledActionPicker = async () => {
     setDialogLoading(true);
@@ -2052,77 +2163,107 @@ case "messageText": {
       setDialogLoading(false);
     }
   };
-const openTextMessagePicker = () => {
-  // Get the current message from the first item in programTextMsgInfo
-  const firstMsg = programTextMsgInfo[0] || {};
-  
-  // Try different possible field names for the message text
-  const currentMessage = 
-    firstMsg.messageText || 
-    firstMsg.message_text || 
-    firstMsg.text || 
-    firstMsg.msg || 
-    firstMsg.MessageText ||
-    firstMsg.Message || 
-    firstMsg.value ||
-    "";
-  
-  console.log("📤 Current message text:", currentMessage);
-  console.log("📤 Full message object:", firstMsg);
-  
-  // ✅ Directly set dialog state to ensure messageDynamicText is at top level
-  setDialog({
-    type: "messageText",
-    open: true,
-    data: {
-      data: [],
-      messageDynamicText: currentMessage,
-      requestAppFrom: REQUEST_FROM
-    }
-  });
-};
+  const openTextMessagePicker = () => {
+    // Get the current message from the first item in programTextMsgInfo
+    const firstMsg = programTextMsgInfo[0] || {};
+
+    // Try different possible field names for the message text
+    const currentMessage =
+      firstMsg.messageText ||
+      firstMsg.message_text ||
+      firstMsg.text ||
+      firstMsg.msg ||
+      firstMsg.MessageText ||
+      firstMsg.Message ||
+      firstMsg.value ||
+      "";
+
+    console.log("📤 Current message text:", currentMessage);
+    console.log("📤 Full message object:", firstMsg);
+
+    // ✅ Directly set dialog state to ensure messageDynamicText is at top level
+    setDialog({
+      type: "messageText",
+      open: true,
+      data: {
+        data: [],
+        messageDynamicText: currentMessage,
+        requestAppFrom: REQUEST_FROM,
+      },
+    });
+  };
 
   // ============================================================
   // UPDATE & CLOSE
   // ============================================================
 
-const handleUpdate = async () => {
-  setSaving(true);
-  try {
-    // ✅ Get the latest message from programTextMsgInfo
-    const firstMsg = programTextMsgInfo[0] || {};
-    const messageText = 
-      firstMsg.messageText || 
-      firstMsg.message_text || 
-      firstMsg.text || 
-      "";
-    
-    await smartReachApi.updateProgramMessageText(
-      program.id,
-      messageText,
-      Number(programInfo?.programStatus ?? 2),
-      programInfo?.programName || program?.name || "",
-    );
-    shared.toast?.success?.("Program updated successfully");
-    setHasChanges(false);
-    const updated = await smartReachApi.getPracticePrograms();
-    onUpdate?.(updated);
-    onClose?.();
-  } catch (error) {
-    shared.toast?.error?.(apiErrorText(error, "Failed to update program"));
-  } finally {
-    setSaving(false);
+  const handleUpdate = async () => {
+    setSaving(true);
+    try {
+      // ✅ Get the latest message from programTextMsgInfo
+      const firstMsg = programTextMsgInfo[0] || {};
+      const messageText =
+        firstMsg.messageText || firstMsg.message_text || firstMsg.text || "";
+
+      await smartReachApi.updateProgramMessageText(
+        program.id,
+        messageText,
+        Number(programInfo?.programStatus ?? 2),
+        programInfo?.programName || program?.name || "",
+      );
+      shared.toast?.success?.("Program updated successfully");
+      setHasChanges(false);
+      const updated = await smartReachApi.getPracticePrograms();
+      onUpdate?.(updated);
+      onClose?.();
+    } catch (error) {
+      shared.toast?.error?.(apiErrorText(error, "Failed to update program"));
+    } finally {
+      setSaving(false);
+    }
+  };
+// Update the handleClose and handleDiscardConfirm functions
+
+const handleDiscardConfirm = (confirmed) => {
+  setConfirmDiscard(false);
+  
+  if (!confirmed) {
+    return;
   }
+  
+  setIsClosing(true);
+  
+  setTimeout(() => {
+    setIsClosing(false);
+    // ✅ Use onCancel if provided, otherwise use onClose
+    if (onCancel) {
+      onCancel();
+    } else {
+      onClose?.();
+    }
+  }, 300);
 };
 
-  const handleClose = async () => {
-    if (hasChanges && !window.confirm(SR_TEXT.WARNING_MESSAGE)) return;
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsClosing(false);
+const handleClose = () => {
+  // If there are unsaved changes, show ConfirmDialog
+  if (hasChanges) {
+    setConfirmDiscard(true);
+    return;
+  }
+
+  // No changes, close directly
+  setIsClosing(true);
+
+  setTimeout(() => {
+    setIsClosing(false);
+    // ✅ Use onCancel if provided, otherwise use onClose
+    if (onCancel) {
+      onCancel();
+    } else {
       onClose?.();
-    }, 300);
-  };
+    }
+  }, 300);
+};
 
   // ============================================================
   // FETCH DATA
@@ -2146,10 +2287,11 @@ const handleUpdate = async () => {
 
       const criteriaArray = Array.isArray(criteria) ? criteria : [];
       setSelectedCriteria(sortAlphabetically(criteriaArray));
+      const currentProgramThreshold = Number(infoData?.threshold || 0);
 
-      // ✅ FIX: Use 'actions' (selected actions) not 'scheduled' (all actions)
-      // 'actions' comes from getSelectedActions - these are the selected ones
-      // 'scheduled' comes from getScheduledActions - these are all available
+      setProgramThreshold(currentProgramThreshold);
+
+      await getPracticeSumOfProgramThreshold(currentProgramThreshold);
       const selectedActionsList = Array.isArray(actions) ? actions : [];
       const normalizedSelectedActions = selectedActionsList.map((action) => ({
         id: action.id || action.actionId || action.action_id,
@@ -2164,7 +2306,7 @@ const handleUpdate = async () => {
       // Keep all available actions for reference
       setSelectedActions(sortAlphabetically(scheduled || []));
       setProgramTextMsgInfo(Array.isArray(messages) ? messages : []);
-      setProgramThreshold(threshold || 0);
+      // setProgramThreshold(threshold || 0);
 
       const ageCriteria = criteriaArray.find(
         (c) => c.name === CRITERIA_NAMES.AGE,
@@ -2257,12 +2399,14 @@ const handleUpdate = async () => {
 
   if (!program) return null;
 
-  const totalPatients = Number(program.total) || 0;
-  const thresholdValue = Number(programThreshold) || 0;
-  const allocationPercent =
-    totalPatients > 0
-      ? ((thresholdValue / totalPatients) * 100).toFixed(2)
-      : "0.00";
+// ✅ Use programInfo.threshold instead of programThreshold
+const thresholdValue = Number(programInfo?.threshold) || 0;
+// ✅ Divide by 40000 (or totalPatients if needed)
+const baseValue = 40000; // Hardcoded as per requirement
+const allocationPercent =
+  baseValue > 0
+    ? ((thresholdValue / baseValue) * 100).toFixed(2)
+    : "0.00";
   const busy = dialogLoading || saving || isClosing;
   const renderCriteriaItem = (criteria, label) => {
     const name = criteria.name?.toLowerCase() || "";
@@ -2682,13 +2826,17 @@ const handleUpdate = async () => {
                             <span className="text-sm font-medium text-slate-800">
                               {getDisplayName(item)}
                             </span>
-                            <EditIconButton
-                              title={`Edit ${getDisplayName(item)}`}
-                              onClick={() =>
-                                openActionDetailPicker(item, actionType)
-                              }
-                              disabled={busy}
-                            />
+                            {["activity", "location", "provider"].includes(
+                              actionType,
+                            ) && (
+                              <EditIconButton
+                                title={`Edit ${getDisplayName(item)}`}
+                                onClick={() =>
+                                  openActionDetailPicker(item, actionType)
+                                }
+                                disabled={busy}
+                              />
+                            )}
                           </div>
                         );
                       })}
@@ -2733,49 +2881,49 @@ const handleUpdate = async () => {
                   )}
                 {/* Text Message */}
                 {/* Text Message */}
-<div>
-  <button
-    onClick={openTextMessagePicker}
-    disabled={busy}
-    className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-60"
-  >
-    <FileText size={14} /> Text Message
-  </button>
-  {programTextMsgInfo && programTextMsgInfo.length > 0 && (
-    <div className="mt-2 space-y-1.5">
-      {programTextMsgInfo.map((msg, idx) => {
-        // Try different possible field names for the message text
-        const messageText = 
-          msg?.messageText || 
-          msg?.message_text || 
-          msg?.text || 
-          msg?.msg || 
-          msg?.MessageText ||
-          msg?.Message || 
-          msg?.value ||
-          "";
-        
-        return (
-          <div
-            key={idx}
-            className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
-          >
-            <span className="text-sm font-medium text-slate-800 truncate flex-1">
-              {messageText || "No message"}
-            </span>
-            <button
-              onClick={openTextMessagePicker}
-              className="ml-2 rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
-              title="Edit message"
-            >
-              <Edit size={14} />
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  )}
-</div>
+                <div>
+                  <button
+                    onClick={openTextMessagePicker}
+                    disabled={busy}
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-60"
+                  >
+                    <FileText size={14} /> Text Message
+                  </button>
+                  {programTextMsgInfo && programTextMsgInfo.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      {programTextMsgInfo.map((msg, idx) => {
+                        // Try different possible field names for the message text
+                        const messageText =
+                          msg?.messageText ||
+                          msg?.message_text ||
+                          msg?.text ||
+                          msg?.msg ||
+                          msg?.MessageText ||
+                          msg?.Message ||
+                          msg?.value ||
+                          "";
+
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                          >
+                            <span className="text-sm font-medium text-slate-800 truncate flex-1">
+                              {messageText || "No message"}
+                            </span>
+                            <button
+                              onClick={openTextMessagePicker}
+                              className="ml-2 rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
+                              title="Edit message"
+                            >
+                              <Edit size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
                 {/* Program Info */}
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -2784,6 +2932,9 @@ const handleUpdate = async () => {
                       <span className="text-xs font-semibold text-slate-600">
                         Program Goal
                       </span>
+                      <p className="text-sm font-medium text-slate-800">
+                        {programInfo?.goalName}
+                      </p>
                     </div>
                     <div>
                       <span className="text-xs font-semibold text-slate-600">
@@ -2804,8 +2955,9 @@ const handleUpdate = async () => {
                         Threshold
                       </span>
                       <p className="text-sm font-medium text-slate-800">
-                        {formatNumber(thresholdValue)} /{" "}
-                        {formatNumber(totalPatients)}
+                        {/* {formatNumber(thresholdValue)} /{" "}
+                        {formatNumber(totalPatients)} */}
+                        {programInfo?.threshold} / 40000
                       </p>
                     </div>
                     <div>
@@ -2821,45 +2973,11 @@ const handleUpdate = async () => {
                         Remaining
                       </span>
                       <p className="text-sm font-medium text-slate-800">
-                        {formatNumber(
-                          Math.max(totalPatients - thresholdValue, 0),
-                        )}
+                        {remainingTextLimit}
                       </p>
                     </div>
                   </div>
                 </div>
-
-                {/* Extra Info */}
-                {programInfo && (
-                  <div className="rounded-lg bg-slate-50 p-3 border border-slate-200">
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <span className="font-semibold text-slate-600">
-                          External Data:
-                        </span>
-                        <span className="ml-1 text-slate-700">
-                          {programInfo.externalData === 1 ? "Yes" : "No"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-semibold text-slate-600">
-                          VPT C:
-                        </span>
-                        <span className="ml-1 text-slate-700">
-                          {programInfo.vptc ? "Yes" : "No"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-semibold text-slate-600">
-                          Informational Only:
-                        </span>
-                        <span className="ml-1 text-slate-700">
-                          {programInfo.informationalOnlyAction ? "Yes" : "No"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -2992,6 +3110,21 @@ const handleUpdate = async () => {
         data={dialog.data}
         onClose={handleDialogClose}
       />
+  <ConfirmDialog 
+  open={confirmDiscard} 
+  data={{ title: SR_TEXT.WARNING_TITLE, message: SR_TEXT.WARNING_MESSAGE }} 
+  onClose={(confirmed) => {
+    setConfirmDiscard(false);
+    if (confirmed) {
+      // ✅ Use onCancel if provided, otherwise use onClose
+      if (onCancel) {
+        onCancel();
+      } else {
+        onClose?.();
+      }
+    }
+  }} 
+/>
     </>
   );
 };

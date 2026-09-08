@@ -312,13 +312,16 @@ export const smartReachApi = {
       if (Array.isArray(data) && data.length > 0) {
         const firstItem = data[0];
         // Check if it has availableList/selectedList or response property
-        if (firstItem?.availableList !== undefined || firstItem?.selectedList !== undefined) {
+        if (
+          firstItem?.availableList !== undefined ||
+          firstItem?.selectedList !== undefined
+        ) {
           console.log("📊 Found availableList/selectedList in array[0]");
           // Also check for cptHadNotFreqData
           if (firstItem?.cptHadNotFreqData !== undefined) {
             return {
               ...firstItem,
-              cptHadNotFreqData: firstItem.cptHadNotFreqData
+              cptHadNotFreqData: firstItem.cptHadNotFreqData,
             };
           }
           return firstItem;
@@ -332,7 +335,7 @@ export const smartReachApi = {
               return {
                 availableList: responseItem.availableList || [],
                 selectedList: responseItem.selectedList || [],
-                cptHadNotFreqData: responseItem.cptHadNotFreqData || null
+                cptHadNotFreqData: responseItem.cptHadNotFreqData || null,
               };
             }
           }
@@ -340,12 +343,15 @@ export const smartReachApi = {
       }
 
       // If data itself has availableList/selectedList
-      if (data?.availableList !== undefined || data?.selectedList !== undefined) {
+      if (
+        data?.availableList !== undefined ||
+        data?.selectedList !== undefined
+      ) {
         console.log("📊 Found availableList/selectedList in object");
         return {
           availableList: data.availableList || [],
           selectedList: data.selectedList || [],
-          cptHadNotFreqData: data.cptHadNotFreqData || null
+          cptHadNotFreqData: data.cptHadNotFreqData || null,
         };
       }
 
@@ -384,20 +390,23 @@ export const smartReachApi = {
       return [];
     }
   },
-async updateProgramActions(payload) {
-  try {
-    console.log("📤 Update Program Actions Payload:", JSON.stringify(payload, null, 2));
-    const response = await client().post("/programAction", payload);
-    return response?.data;
-  } catch (error) {
-    console.error("❌ Update Program Actions Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  async updateProgramActions(payload) {
+    try {
+      console.log(
+        "📤 Update Program Actions Payload:",
+        JSON.stringify(payload, null, 2),
+      );
+      const response = await client().post("/programAction", payload);
+      return response?.data;
+    } catch (error) {
+      console.error("❌ Update Program Actions Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
   async getSelectedActions(programId) {
     try {
       const response = await client().get(
@@ -471,7 +480,10 @@ async updateProgramActions(payload) {
 
   async updateAppointmentStatus(payload) {
     try {
-      console.log("📤 Appointment Status Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Appointment Status Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/appointments", payload);
       return response?.data;
     } catch (error) {
@@ -509,7 +521,10 @@ async updateProgramActions(payload) {
         attributeId: payload.attributeId,
       };
 
-      console.log("📤 Criteria Age Request Payload:", JSON.stringify(requestPayload, null, 2));
+      console.log(
+        "📤 Criteria Age Request Payload:",
+        JSON.stringify(requestPayload, null, 2),
+      );
 
       const response = await client().post("/criteriaage", requestPayload);
       return response?.data;
@@ -553,7 +568,10 @@ async updateProgramActions(payload) {
   // ============================================================
   async updateLocationCriteria(payload) {
     try {
-      console.log("📤 Location Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Location Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/locations", payload);
       return response?.data;
     } catch (error) {
@@ -595,7 +613,10 @@ async updateProgramActions(payload) {
   // ============================================================
   async updateEthnicityTypeCriteria(payload) {
     try {
-      console.log("📤 Ethnicity Type Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Ethnicity Type Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/ethnicities", payload);
       return response?.data;
     } catch (error) {
@@ -613,7 +634,10 @@ async updateProgramActions(payload) {
   // ============================================================
   async programFrequencyInfo(payload) {
     try {
-      console.log("📤 Program Frequency Info Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Program Frequency Info Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/programfrequencyinfo", payload);
       return response?.data;
     } catch (error) {
@@ -640,8 +664,14 @@ async updateProgramActions(payload) {
         attributeId: payload.attributeId,
       };
 
-      console.log("📤 Criteria Frequency Request Payload:", JSON.stringify(requestPayload, null, 2));
-      const response = await client().post("/criteriafrequency", requestPayload);
+      console.log(
+        "📤 Criteria Frequency Request Payload:",
+        JSON.stringify(requestPayload, null, 2),
+      );
+      const response = await client().post(
+        "/criteriafrequency",
+        requestPayload,
+      );
       return response?.data;
     } catch (error) {
       console.error("❌ Criteria Frequency Error:", error);
@@ -682,7 +712,10 @@ async updateProgramActions(payload) {
   // ============================================================
   async updateGenderCriteria(payload) {
     try {
-      console.log("📤 Gender Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Gender Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/genders", payload);
       return response?.data;
     } catch (error) {
@@ -724,7 +757,10 @@ async updateProgramActions(payload) {
   // ============================================================
   async updateInsuranceCriteria(payload) {
     try {
-      console.log("📤 Insurance Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Insurance Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/insurances", payload);
       return response?.data;
     } catch (error) {
@@ -740,75 +776,89 @@ async updateProgramActions(payload) {
   // ============================================================
   // PATIENT ZIP CODE CRITERIA (GET /patientzipcodes)
   // ============================================================
-async getPatientZipCodeCriteria(programId, criteriaId) {
-  try {
-    const response = await client().get("/patientzipcodes", {
-      headers: {
-        reqfrom: "ProactiveCoordinator",
-        programId: String(programId),
-        patientAttributesId: String(criteriaId || ""),
-      },
-    });
-    
-    console.log("📊 RAW Patient Zip API Response:", response);
+  async getPatientZipCodeCriteria(programId, criteriaId) {
+    try {
+      const response = await client().get("/patientzipcodes", {
+        headers: {
+          reqfrom: "ProactiveCoordinator",
+          programId: String(programId),
+          patientAttributesId: String(criteriaId || ""),
+        },
+      });
 
-    // The API returns the selected zip codes directly as [{code: 12}, {code: 123}]
-    // These are already selected values for the program
-    const responseData = response?.data?.response ?? response?.data ?? response;
+      console.log("📊 RAW Patient Zip API Response:", response);
 
-    // If response is an array with code objects, these are the selected codes
-    if (Array.isArray(responseData) && responseData.length > 0 && responseData[0]?.code !== undefined) {
-      // These are the selected codes from the API
-      const selectedCodes = responseData.map(item => ({
-        ...item,
-        name: String(item.code),
-        id: item.id || item.code,
-        code: item.code,
-      }));
-      
-      return {
-        selectedList: selectedCodes,  // Put in selectedList
-        availableList: [],            // No available codes initially
-      };
+      // The API returns the selected zip codes directly as [{code: 12}, {code: 123}]
+      // These are already selected values for the program
+      const responseData =
+        response?.data?.response ?? response?.data ?? response;
+
+      // If response is an array with code objects, these are the selected codes
+      if (
+        Array.isArray(responseData) &&
+        responseData.length > 0 &&
+        responseData[0]?.code !== undefined
+      ) {
+        // These are the selected codes from the API
+        const selectedCodes = responseData.map((item) => ({
+          ...item,
+          name: String(item.code),
+          id: item.id || item.code,
+          code: item.code,
+        }));
+
+        return {
+          selectedList: selectedCodes, // Put in selectedList
+          availableList: [], // No available codes initially
+        };
+      }
+
+      // If response has availableList/selectedList structure
+      if (responseData?.availableList || responseData?.selectedList) {
+        const selectedList = (responseData.selectedList || []).map((item) => ({
+          ...item,
+          name: String(
+            item.code || item.zip || item.zip_code || item.name || item,
+          ),
+          id: item.id || item.code || item.zip,
+          code: item.code || item.zip,
+        }));
+
+        const availableList = (responseData.availableList || []).map(
+          (item) => ({
+            ...item,
+            name: String(
+              item.code || item.zip || item.zip_code || item.name || item,
+            ),
+            id: item.id || item.code || item.zip,
+            code: item.code || item.zip,
+          }),
+        );
+
+        return { availableList, selectedList };
+      }
+
+      console.log("ℹ️ No patient zip data found, returning empty");
+      return { availableList: [], selectedList: [] };
+    } catch (error) {
+      console.error("❌ Get Patient Zip Code Criteria Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      return { availableList: [], selectedList: [] };
     }
-
-    // If response has availableList/selectedList structure
-    if (responseData?.availableList || responseData?.selectedList) {
-      const selectedList = (responseData.selectedList || []).map(item => ({
-        ...item,
-        name: String(item.code || item.zip || item.zip_code || item.name || item),
-        id: item.id || item.code || item.zip,
-        code: item.code || item.zip,
-      }));
-      
-      const availableList = (responseData.availableList || []).map(item => ({
-        ...item,
-        name: String(item.code || item.zip || item.zip_code || item.name || item),
-        id: item.id || item.code || item.zip,
-        code: item.code || item.zip,
-      }));
-      
-      return { availableList, selectedList };
-    }
-
-    console.log("ℹ️ No patient zip data found, returning empty");
-    return { availableList: [], selectedList: [] };
-  } catch (error) {
-    console.error("❌ Get Patient Zip Code Criteria Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
-    }
-    return { availableList: [], selectedList: [] };
-  }
-},
+  },
 
   // ============================================================
   // PATIENT ZIP CODE CRITERIA (POST /zipcodes)
   // ============================================================
   async updatePatientZipCodeCriteria(payload) {
     try {
-      console.log("📤 Patient Zip Code Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Patient Zip Code Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/zipcodes", payload);
       return response?.data;
     } catch (error) {
@@ -850,7 +900,10 @@ async getPatientZipCodeCriteria(programId, criteriaId) {
   // ============================================================
   async updateProvidersCriteria(payload) {
     try {
-      console.log("📤 Providers Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Providers Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/providers", payload);
       return response?.data;
     } catch (error) {
@@ -892,7 +945,10 @@ async getPatientZipCodeCriteria(programId, criteriaId) {
   // ============================================================
   async updateRaceTypeCriteria(payload) {
     try {
-      console.log("📤 Race Type Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Race Type Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/races", payload);
       return response?.data;
     } catch (error) {
@@ -931,7 +987,10 @@ async getPatientZipCodeCriteria(programId, criteriaId) {
 
   async updateActivityTypeCriteria(payload) {
     try {
-      console.log("📤 Activity Type Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Activity Type Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/activityType", payload);
       return response?.data;
     } catch (error) {
@@ -970,7 +1029,10 @@ async getPatientZipCodeCriteria(programId, criteriaId) {
 
   async updateActivitySetTypeCriteria(payload) {
     try {
-      console.log("📤 Activity Set Type Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Activity Set Type Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/activitySetType", payload);
       return response?.data;
     } catch (error) {
@@ -1009,7 +1071,10 @@ async getPatientZipCodeCriteria(programId, criteriaId) {
 
   async updateCptCodeHadCriteria(payload) {
     try {
-      console.log("📤 CPT Code Had Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 CPT Code Had Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/cptcodes", payload);
       return response.data;
     } catch (error) {
@@ -1024,7 +1089,10 @@ async getPatientZipCodeCriteria(programId, criteriaId) {
 
   async updateCptCodeHadNotCriteria(payload) {
     try {
-      console.log("📤 CPT Code Had Not Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 CPT Code Had Not Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/cptcodes", payload);
       return response?.data;
     } catch (error) {
@@ -1097,143 +1165,155 @@ async getPatientZipCodeCriteria(programId, criteriaId) {
       throw error;
     }
   },
-// src/services/smartReachApi.js
+  // src/services/smartReachApi.js
 
-// Add these methods to the smartReachApi object:
+  // Add these methods to the smartReachApi object:
 
-// ============================================================
-// ACTIVITIES (Appointment Type)
-// ============================================================
-// src/services/smartReachApi.js
+  // ============================================================
+  // ACTIVITIES (Appointment Type)
+  // ============================================================
+  // src/services/smartReachApi.js
 
-// Update these methods in the smartReachApi object:
+  // Update these methods in the smartReachApi object:
 
-// ============================================================
-// ACTIVITIES (Appointment Type)
-// ============================================================
-// src/services/smartReachApi.js
+  // ============================================================
+  // ACTIVITIES (Appointment Type)
+  // ============================================================
+  // src/services/smartReachApi.js
 
-// Update these methods in the smartReachApi object:
+  // Update these methods in the smartReachApi object:
 
-// ============================================================
-// ACTIVITIES (Appointment Type)
-// ============================================================
-async getActivities(programActionId, programId) {
-  try {
-    const response = await client().get("/activities", {
-      headers: {
-        reqfromaction: "action",
-        actionid: String(programActionId || ""),
-        programid: String(programId || ""),
-      },
-    });
-    const result = unwrapList(response);
-    return result;
-  } catch (error) {
-    console.error("❌ Get Activities Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  // ============================================================
+  // ACTIVITIES (Appointment Type)
+  // ============================================================
+  async getActivities(programActionId, programId) {
+    try {
+      const response = await client().get("/activities", {
+        headers: {
+          reqfromaction: "action",
+          actionid: String(programActionId || ""),
+          programid: String(programId || ""),
+        },
+      });
+      const result = unwrapList(response);
+      return result;
+    } catch (error) {
+      console.error("❌ Get Activities Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
 
-async updateActionActivity(payload) {
-  try {
-    console.log("📤 Update Action Activity Payload:", JSON.stringify(payload, null, 2));
-    const response = await client().post("/actionActivity", payload);
-    return response?.data;
-  } catch (error) {
-    console.error("❌ Update Action Activity Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  async updateActionActivity(payload) {
+    try {
+      console.log(
+        "📤 Update Action Activity Payload:",
+        JSON.stringify(payload, null, 2),
+      );
+      const response = await client().post("/actionActivity", payload);
+      return response?.data;
+    } catch (error) {
+      console.error("❌ Update Action Activity Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
 
-// ============================================================
-// ACTION LOCATIONS
-// ============================================================
-async getActionLocations(programActionId, programId) {
-  try {
-    const response = await client().get("/locations", {
-      headers: {
-        reqfromaction: "action",
-        actionid: String(programActionId || ""),
-        programid: String(programId || ""),
-      },
-    });
-    const result = unwrapList(response);
-    return result;
-  } catch (error) {
-    console.error("❌ Get Action Locations Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  // ============================================================
+  // ACTION LOCATIONS
+  // ============================================================
+  async getActionLocations(programActionId, programId) {
+    try {
+      const response = await client().get("/locations", {
+        headers: {
+          reqfromaction: "action",
+          actionid: String(programActionId || ""),
+          programid: String(programId || ""),
+        },
+      });
+      const result = unwrapList(response);
+      return result;
+    } catch (error) {
+      console.error("❌ Get Action Locations Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
 
-async updateActionLocation(payload) {
-  try {
-    console.log("📤 Update Action Location Payload:", JSON.stringify(payload, null, 2));
-    const response = await client().post("/actionLocation", payload);
-    return response?.data;
-  } catch (error) {
-    console.error("❌ Update Action Location Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  async updateActionLocation(payload) {
+    try {
+      console.log(
+        "📤 Update Action Location Payload:",
+        JSON.stringify(payload, null, 2),
+      );
+      const response = await client().post("/actionLocation", payload);
+      return response?.data;
+    } catch (error) {
+      console.error("❌ Update Action Location Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
 
-// ============================================================
-// ACTION PROVIDERS
-// ============================================================
-async getActionProviders(programActionId, programId) {
-  try {
-    const response = await client().get("/providers", {
-      headers: {
-        reqfromaction: "action",
-        actionid: String(programActionId || ""),
-        programid: String(programId || ""),
-      },
-    });
-    const result = unwrapList(response);
-    return result;
-  } catch (error) {
-    console.error("❌ Get Action Providers Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  // ============================================================
+  // ACTION PROVIDERS
+  // ============================================================
+  async getActionProviders(programActionId, programId) {
+    try {
+      const response = await client().get("/providers", {
+        headers: {
+          reqfromaction: "action",
+          actionid: String(programActionId || ""),
+          programid: String(programId || ""),
+        },
+      });
+      const result = unwrapList(response);
+      return result;
+    } catch (error) {
+      console.error("❌ Get Action Providers Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
 
-async updateActionProvider(payload) {
-  try {
-    console.log("📤 Update Action Provider Payload:", JSON.stringify(payload, null, 2));
-    const response = await client().post("/actionProvider", payload);
-    return response?.data;
-  } catch (error) {
-    console.error("❌ Update Action Provider Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  async updateActionProvider(payload) {
+    try {
+      console.log(
+        "📤 Update Action Provider Payload:",
+        JSON.stringify(payload, null, 2),
+      );
+      const response = await client().post("/actionProvider", payload);
+      return response?.data;
+    } catch (error) {
+      console.error("❌ Update Action Provider Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
   async updateDiagnosisCodeHadCriteria(payload) {
     try {
-      console.log("📤 Update Diagnosis Codes Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Update Diagnosis Codes Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/icdcodes", payload);
       return response.data;
     } catch (error) {
@@ -1251,7 +1331,10 @@ async updateActionProvider(payload) {
   // ============================================================
   async updateGenericCriteria(payload) {
     try {
-      console.log("📤 Generic Criteria Payload:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 Generic Criteria Payload:",
+        JSON.stringify(payload, null, 2),
+      );
       const response = await client().post("/criteria", payload);
       return response?.data;
     } catch (error) {
@@ -1264,114 +1347,141 @@ async updateActionProvider(payload) {
     }
   },
   // ============================================================
-// DELETE PROGRAM
-// ============================================================
-async deleteProgram(programId) {
-  try {
-    const payload = {
-      programId: Number(programId),
-      activeStatus: 0
-    };
-    
-    console.log("📤 Delete Program Payload:", JSON.stringify(payload, null, 2));
-    
-    const response = await client().delete(`/programs`, {
-      data: payload,
-      headers: {
-        'Content-Type': 'application/json',
+  // DELETE PROGRAM
+  // ============================================================
+  async deleteProgram(programId) {
+    try {
+      const payload = {
+        programId: Number(programId),
+        activeStatus: 0,
+      };
+
+      console.log(
+        "📤 Delete Program Payload:",
+        JSON.stringify(payload, null, 2),
+      );
+
+      const response = await client().delete(`/programs`, {
+        data: payload,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("✅ Program deleted successfully:", response.data);
+      return response?.data;
+    } catch (error) {
+      console.error("❌ Delete Program Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
       }
-    });
-    
-    console.log("✅ Program deleted successfully:", response.data);
-    return response?.data;
-  } catch (error) {
-    console.error("❌ Delete Program Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+      throw error;
     }
-    throw error;
-  }
-},
-// src/services/smartReachApi.js
+  },
+  // src/services/smartReachApi.js
 
-// Add this method to the smartReachApi object after the deleteProgram method:
+  // Add this method to the smartReachApi object after the deleteProgram method:
 
-// ============================================================
-// CREATE PROGRAM
-// ============================================================
-async createProgram(payload) {
-  try {
-    console.log("📤 Create Program Payload:", JSON.stringify(payload, null, 2));
-    const response = await client().post("/programs", payload);
-    console.log("✅ Program created successfully:", response.data);
-    return response?.data;
-  } catch (error) {
-    console.error("❌ Create Program Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  // ============================================================
+  // CREATE PROGRAM
+  // ============================================================
+  async createProgram(payload) {
+    try {
+      console.log(
+        "📤 Create Program Payload:",
+        JSON.stringify(payload, null, 2),
+      );
+      const response = await client().post("/programs", payload);
+      console.log("✅ Program created successfully:", response.data);
+      return response?.data;
+    } catch (error) {
+      console.error("❌ Create Program Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
 
-// ============================================================
-// GET PARENT SITE
-// ============================================================
-async getParentSite() {
-  try {
-    const response = await client().get("/parentsite/");
-    console.log("📊 Parent Site Response:", response.data);
-    return response.data;
-  } catch (error) {
-    console.error("❌ Get Parent Site Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  // ============================================================
+  // GET PARENT SITE
+  // ============================================================
+  async getParentSite() {
+    try {
+      const response = await client().get("/parentsite/");
+      console.log("📊 Parent Site Response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Get Parent Site Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
+  async updateProgramStatus(programId, programStatus) {
+    try {
+      const payload = {
+        programId: Number(programId),
+        programStatus: String(programStatus),
+      };
+      const response = await client().put("/program", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating program status:", error);
+      throw error;
+    }
+  },
 
-// ============================================================
-// GET SMART REACH PAYER
-// ============================================================
-async getSmartReachPayer() {
-  try {
-    const response = await client().get("/smartreachpayer");
-    console.log("📊 Smart Reach Payer Response:", response.data);
-    return response.data;
-  } catch (error) {
-    console.error("❌ Get Smart Reach Payer Error:", error);
-    if (error.response) {
-      console.error("❌ Error Response Data:", error.response.data);
-      console.error("❌ Error Status:", error.response.status);
+  // ============================================================
+  // GET SMART REACH PAYER
+  // ============================================================
+  async getSmartReachPayer() {
+    try {
+      const response = await client().get("/smartreachpayer");
+      console.log("📊 Smart Reach Payer Response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Get Smart Reach Payer Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
     }
-    throw error;
-  }
-},
+  },
 
   // ============================================================
   // LEGACY LOCATION METHODS (DEPRECATED - Use getLocationCriteria instead)
   // ============================================================
   async getLocationScheduledCriteria(programId, criteriaId) {
-    console.warn("⚠️ getLocationScheduledCriteria is deprecated, use getLocationCriteria with locationType='scheduled'");
+    console.warn(
+      "⚠️ getLocationScheduledCriteria is deprecated, use getLocationCriteria with locationType='scheduled'",
+    );
     return this.getLocationCriteria(programId, criteriaId, "scheduled");
   },
 
   async getLocationBilledCriteria(programId, criteriaId) {
-    console.warn("⚠️ getLocationBilledCriteria is deprecated, use getLocationCriteria with locationType='billed'");
+    console.warn(
+      "⚠️ getLocationBilledCriteria is deprecated, use getLocationCriteria with locationType='billed'",
+    );
     return this.getLocationCriteria(programId, criteriaId, "billed");
   },
 
   async updateLocationScheduledCriteria(payload) {
-    console.warn("⚠️ updateLocationScheduledCriteria is deprecated, use updateLocationCriteria");
+    console.warn(
+      "⚠️ updateLocationScheduledCriteria is deprecated, use updateLocationCriteria",
+    );
     return this.updateLocationCriteria(payload);
   },
 
   async updateLocationBilledCriteria(payload) {
-    console.warn("⚠️ updateLocationBilledCriteria is deprecated, use updateLocationCriteria");
+    console.warn(
+      "⚠️ updateLocationBilledCriteria is deprecated, use updateLocationCriteria",
+    );
     return this.updateLocationCriteria(payload);
   },
 };

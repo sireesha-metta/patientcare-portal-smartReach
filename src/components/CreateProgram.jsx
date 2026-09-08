@@ -1,50 +1,116 @@
 // src/components/CreateProgram.jsx
+
 import { useState, useEffect } from "react";
-import { CalendarDays, Info, X } from "lucide-react";
+import { Info, X } from "lucide-react";
+
 import { useSharedUi } from "patientcare-portal-sharedui/useSharedUi";
 import ConfirmDialog from "patientcare-portal-sharedui/ConfirmDialog";
+
 import smartReachApi from "../services/smartReachApi";
 import { apiErrorText } from "../utils/apiErrorText";
 
+// ============================================================
+// Reusable Input / Select Styles
+// ============================================================
+
+const inputClass =
+  "h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60";
+
+const labelClass =
+  "mb-1.5 block text-sm font-semibold text-slate-700";
+
+const subLabelClass =
+  "mb-1.5 block text-xs font-medium text-slate-500";
+
+// ============================================================
+// Toggle Button
+// ============================================================
+
+const ToggleButton = ({
+  value,
+  currentValue,
+  label,
+  onChange,
+  disabled,
+}) => {
+  const isActive = value === currentValue;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(value)}
+      disabled={disabled}
+      className={`h-10 min-w-[76px] px-4 text-sm font-semibold transition-all ${
+        isActive
+          ? "bg-emerald-600 text-white"
+          : "bg-white text-slate-600 hover:bg-slate-50"
+      } ${
+        disabled
+          ? "cursor-not-allowed opacity-60"
+          : "cursor-pointer"
+      }`}
+    >
+      {label}
+    </button>
+  );
+};
+
+// ============================================================
+// Main Component
+// ============================================================
+
 const CreateProgram = ({ onClose, onUpdate }) => {
   const shared = useSharedUi();
+
   const [loading, setLoading] = useState(false);
   const [goals, setGoals] = useState([]);
   const [payers, setPayers] = useState([]);
+
   const [totalThreshold, setTotalThreshold] = useState(0);
   const [initialThreshold, setInitialThreshold] = useState(0);
+
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [parentSite, setParentSite] = useState(null);
 
-  // Get today's date for default values
+  // ============================================================
+  // Date Helpers
+  // ============================================================
+
   const getTodayDate = () => {
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    return today.toISOString().split("T")[0];
   };
 
-  // Get date 30 days from now for default end date
   const getFutureDate = (days = 30) => {
     const date = new Date();
     date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   };
 
-  // Generate time options from 1AM to 12AM
+  // ============================================================
+  // Time Options
+  // ============================================================
+
   const generateTimeOptions = () => {
     const times = [];
+
     for (let hour = 1; hour <= 12; hour++) {
       times.push(`${hour}AM`);
     }
+
     for (let hour = 1; hour <= 12; hour++) {
       times.push(`${hour}PM`);
     }
+
     return times;
   };
 
   const timeOptions = generateTimeOptions();
-
-  // Set default time to 9AM
   const defaultTime = "9AM";
+
+  // ============================================================
+  // Form Data
+  // ============================================================
 
   const [formData, setFormData] = useState({
     programName: "",
@@ -59,78 +125,140 @@ const CreateProgram = ({ onClose, onUpdate }) => {
     selectedCustomer: "",
   });
 
-  // Format number with commas
+  // ============================================================
+  // Number Helpers
+  // ============================================================
+
   const formatNumber = (num) => {
-    if (num === null || num === undefined || isNaN(num)) return "0";
+    if (
+      num === null ||
+      num === undefined ||
+      isNaN(num)
+    ) {
+      return "0";
+    }
+
     return Number(num).toLocaleString("en-US");
   };
 
-  // Format number WITHOUT commas (just plain number)
   const formatPlainNumber = (num) => {
-    if (num === null || num === undefined || isNaN(num)) return "0";
+    if (
+      num === null ||
+      num === undefined ||
+      isNaN(num)
+    ) {
+      return "0";
+    }
+
     return String(num);
   };
 
-  // Parse number from string (remove commas)
   const parseNumber = (str) => {
     if (!str) return 0;
-    return parseInt(String(str).replace(/,/g, "")) || 0;
+
+    return (
+      parseInt(String(str).replace(/,/g, ""), 10) || 0
+    );
   };
 
-  // Convert time string to 24-hour format for programScheduledTime
+  // ============================================================
+  // Time Conversion
+  // ============================================================
+
   const getTimeIn24Hour = (timeStr) => {
     if (!timeStr) return "9";
-    const hour = parseInt(timeStr);
+
+    const hour = parseInt(timeStr, 10);
     const ampm = timeStr.slice(-2);
+
     let hours = hour;
-    if (ampm === "PM" && hour !== 12) hours = hour + 12;
-    if (ampm === "AM" && hour === 12) hours = 0;
+
+    if (ampm === "PM" && hour !== 12) {
+      hours = hour + 12;
+    }
+
+    if (ampm === "AM" && hour === 12) {
+      hours = 0;
+    }
+
     return String(hours);
   };
 
-  // Fetch parent site
+  // ============================================================
+  // Fetch Parent Site
+  // ============================================================
+
   const fetchParentSite = async () => {
     try {
       const response = await smartReachApi.getParentSite();
+
       console.log("Parent Site Response:", response);
+
       setParentSite(response);
+
       return response;
     } catch (error) {
-      console.error("Error fetching parent site:", error);
+      console.error(
+        "Error fetching parent site:",
+        error
+      );
+
       return null;
     }
   };
 
-  // Fetch payers for dropdown using getSmartReachPayer API
+  // ============================================================
+  // Fetch Payers
+  // ============================================================
+
   const fetchPayers = async () => {
     try {
-      const response = await smartReachApi.getSmartReachPayer();
+      const response =
+        await smartReachApi.getSmartReachPayer();
+
       console.log("Full response:", response);
-      
+
       let payerData = [];
-      
+
       if (response) {
-        const dataSource = response.response || response;
-        
-        if (dataSource.smartReachPayers && Array.isArray(dataSource.smartReachPayers)) {
+        const dataSource =
+          response.response || response;
+
+        if (
+          dataSource.smartReachPayers &&
+          Array.isArray(dataSource.smartReachPayers)
+        ) {
           payerData = dataSource.smartReachPayers;
         } else if (Array.isArray(dataSource)) {
           payerData = dataSource;
         } else if (Array.isArray(response)) {
           payerData = response;
         } else {
-          const possibleArrays = Object.values(dataSource).filter(val => Array.isArray(val));
+          const possibleArrays = Object.values(
+            dataSource
+          ).filter((value) =>
+            Array.isArray(value)
+          );
+
           if (possibleArrays.length > 0) {
             payerData = possibleArrays[0];
           }
         }
       }
-      
+
       console.log("Payers loaded:", payerData);
-      console.log("Number of payers:", payerData.length);
+      console.log(
+        "Number of payers:",
+        payerData.length
+      );
+
       setPayers(payerData);
     } catch (error) {
-      console.error("Error fetching payers:", error);
+      console.error(
+        "Error fetching payers:",
+        error
+      );
+
       setPayers([
         { id: 22, name: "Ajayt" },
         { id: 1, name: "Suneel Payer" },
@@ -141,44 +269,76 @@ const CreateProgram = ({ onClose, onUpdate }) => {
     }
   };
 
-  // Fetch initial data
+  // ============================================================
+  // Initial Data
+  // ============================================================
+
   useEffect(() => {
     const fetchInitialData = async () => {
       setLoading(true);
+
       try {
-        const [goalsResult, thresholdResult] = await Promise.all([
+        const [
+          goalsResult,
+          thresholdResult,
+        ] = await Promise.all([
           smartReachApi.getGoals(),
           smartReachApi.getProgramThreshold(),
         ]);
 
-        setGoals(Array.isArray(goalsResult) ? goalsResult : []);
-        
-        // Fetch payers and parent site in parallel
+        setGoals(
+          Array.isArray(goalsResult)
+            ? goalsResult
+            : []
+        );
+
         await Promise.all([
           fetchPayers(),
           fetchParentSite(),
         ]);
 
         let totalThresholdValue = 0;
-        if (thresholdResult !== null && thresholdResult !== undefined) {
-          if (typeof thresholdResult === "number") {
-            totalThresholdValue = thresholdResult;
+
+        if (
+          thresholdResult !== null &&
+          thresholdResult !== undefined
+        ) {
+          if (
+            typeof thresholdResult === "number"
+          ) {
+            totalThresholdValue =
+              thresholdResult;
           } else if (
             typeof thresholdResult === "object" &&
-            thresholdResult.totalThreshold !== undefined
+            thresholdResult.totalThreshold !==
+              undefined
           ) {
-            totalThresholdValue = thresholdResult.totalThreshold;
+            totalThresholdValue =
+              thresholdResult.totalThreshold;
           } else if (
             typeof thresholdResult === "object" &&
             thresholdResult.value !== undefined
           ) {
-            totalThresholdValue = thresholdResult.value;
+            totalThresholdValue =
+              thresholdResult.value;
           }
         }
-        setTotalThreshold(totalThresholdValue);
+
+        setTotalThreshold(
+          totalThresholdValue
+        );
       } catch (error) {
-        console.error("Error fetching data:", error);
-        shared.toast?.error?.(apiErrorText(error, "Failed to load data"));
+        console.error(
+          "Error fetching data:",
+          error
+        );
+
+        shared.toast?.error?.(
+          apiErrorText(
+            error,
+            "Failed to load data"
+          )
+        );
       } finally {
         setLoading(false);
       }
@@ -187,68 +347,145 @@ const CreateProgram = ({ onClose, onUpdate }) => {
     fetchInitialData();
   }, [shared]);
 
+  // ============================================================
+  // Generic Change
+  // ============================================================
+
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
+
+  // ============================================================
+  // PAC Change
+  // ============================================================
 
   const handlePACChange = (value) => {
     setFormData((prev) => ({
       ...prev,
       pacEnabled: value,
-      selectedCustomer: value ? prev.selectedCustomer : "",
+      selectedCustomer: value
+        ? prev.selectedCustomer
+        : "",
     }));
   };
 
+  // ============================================================
+  // Customer Change
+  // ============================================================
+
   const handleCustomerChange = (event) => {
-    const customerId = event.target.value;
+    const customerId =
+      event.target.value;
+
     setFormData((prev) => ({
       ...prev,
       selectedCustomer: customerId,
     }));
   };
 
+  // ============================================================
+  // Threshold Change
+  // ============================================================
+
   const handleThresholdChange = (value) => {
     const cleanValue = value.replace(/,/g, "");
 
-    if (cleanValue === "" || /^\d*$/.test(cleanValue)) {
+    if (
+      cleanValue === "" ||
+      /^\d*$/.test(cleanValue)
+    ) {
       if (cleanValue.length <= 4) {
-        const newValue = parseInt(cleanValue) || 0;
+        const newValue =
+          parseInt(cleanValue, 10) || 0;
 
-        const practiceRole = shared.userDetails?.roles?.practicerole?.[0];
-        const totalTextLimit = practiceRole?.practiceTextLimit || 0;
+        const practiceRole =
+          shared.userDetails?.roles
+            ?.practicerole?.[0];
+
+        const totalTextLimit =
+          practiceRole?.practiceTextLimit || 0;
 
         const remainingWithNewValue =
-          totalTextLimit - totalThreshold + initialThreshold - newValue;
+          totalTextLimit -
+          totalThreshold +
+          initialThreshold -
+          newValue;
 
         if (remainingWithNewValue >= 0) {
-          handleChange("threshold", cleanValue);
+          handleChange(
+            "threshold",
+            cleanValue
+          );
         } else {
           shared.toast?.warning?.(
-            `Threshold cannot exceed ${formatPlainNumber(totalTextLimit - totalThreshold + initialThreshold)}`
+            `Threshold cannot exceed ${formatPlainNumber(
+              totalTextLimit -
+                totalThreshold +
+                initialThreshold
+            )}`
           );
-          const maxAllowed = totalTextLimit - totalThreshold + initialThreshold;
-          handleChange("threshold", String(maxAllowed));
+
+          const maxAllowed =
+            totalTextLimit -
+            totalThreshold +
+            initialThreshold;
+
+          handleChange(
+            "threshold",
+            String(maxAllowed)
+          );
         }
       } else {
-        shared.toast?.warning?.("Threshold cannot exceed 4 digits");
+        shared.toast?.warning?.(
+          "Threshold cannot exceed 4 digits"
+        );
       }
     }
   };
 
+  // ============================================================
+  // User / Threshold Calculations
+  // ============================================================
+
   const userDetails = shared.userDetails;
-  const practiceRole = userDetails?.roles?.practicerole?.[0];
-  const totalTextLimit = practiceRole?.practiceTextLimit || 0;
 
-  const thresholdValue = parseNumber(formData.threshold);
+  const practiceRole =
+    userDetails?.roles?.practicerole?.[0];
+
+  const totalTextLimit =
+    practiceRole?.practiceTextLimit || 0;
+
+  const thresholdValue =
+    parseNumber(formData.threshold);
+
   const perOccupied =
-    totalTextLimit > 0 ? (thresholdValue / totalTextLimit) * 100 : 0;
-  const perOccupiedFormatted = perOccupied.toFixed(2);
-  const remaining =
-    totalTextLimit - totalThreshold + initialThreshold - thresholdValue;
+    totalTextLimit > 0
+      ? (thresholdValue /
+          totalTextLimit) *
+        100
+      : 0;
 
-  // Handle close with confirmation
+  const perOccupiedFormatted =
+    perOccupied.toFixed(2);
+
+  const remaining =
+    totalTextLimit -
+    totalThreshold +
+    initialThreshold -
+    thresholdValue;
+
+  // ============================================================
+  // Close
+  // ============================================================
+
   const handleClose = () => {
-    const hasChanges = formData.programName || formData.threshold;
+    const hasChanges =
+      formData.programName ||
+      formData.threshold;
+
     if (hasChanges) {
       setShowConfirmDialog(true);
     } else {
@@ -256,132 +493,256 @@ const CreateProgram = ({ onClose, onUpdate }) => {
     }
   };
 
-  // Handle confirm dialog close
+  // ============================================================
+  // Confirm Close
+  // ============================================================
+
   const handleConfirmClose = (confirmed) => {
     setShowConfirmDialog(false);
+
     if (confirmed === true) {
       onClose();
     }
   };
 
+  // ============================================================
+  // Submit
+  // ============================================================
+
   const handleSubmit = async () => {
     if (!formData.programName.trim()) {
-      shared.toast?.error?.("Please enter a program name");
+      shared.toast?.error?.(
+        "Please enter a program name"
+      );
       return;
     }
 
-    if (!formData.threshold || parseNumber(formData.threshold) === 0) {
-      shared.toast?.error?.("Please enter a threshold value");
+    if (
+      !formData.threshold ||
+      parseNumber(formData.threshold) === 0
+    ) {
+      shared.toast?.error?.(
+        "Please enter a threshold value"
+      );
       return;
     }
 
-    if (formData.pacEnabled && !formData.selectedCustomer) {
-      shared.toast?.error?.("Please select a Payer Analytics Customer");
+    if (
+      formData.pacEnabled &&
+      !formData.selectedCustomer
+    ) {
+      shared.toast?.error?.(
+        "Please select a Payer Analytics Customer"
+      );
       return;
     }
 
     setLoading(true);
-    try {
-      // Find selected goal and payer
-      const selectedGoal = goals.find(g => String(g.id) === formData.goalId);
-      const selectedPayer = payers.find(p => String(p.id) === formData.selectedCustomer);
-      
-      // Get PMS ID from parent site
-      const pmsId = parentSite?.id || parentSite?.pmsId || "4";
 
-      // Build payload matching Angular structure EXACTLY
+    try {
+      const selectedGoal = goals.find(
+        (goal) =>
+          String(goal.id) ===
+          formData.goalId
+      );
+
+      const selectedPayer = payers.find(
+        (payer) =>
+          String(payer.id) ===
+          formData.selectedCustomer
+      );
+
+      const pmsId =
+        parentSite?.id ||
+        parentSite?.pmsId ||
+        "4";
+
       const payload = {
-        programName: formData.programName.trim(),
-        goalId: selectedGoal?.id || Number(formData.goalId) || 2,
-        goalName: selectedGoal?.name || formData.goalName || "Visit Follow-up",
-        programGoalInformationalStatus: null,
-        noThresholdMessages: formData.threshold + "",
-        programScheduledTime: getTimeIn24Hour(formData.textTime),
+        programName:
+          formData.programName.trim(),
+
+        goalId:
+          selectedGoal?.id ||
+          Number(formData.goalId) ||
+          2,
+
+        goalName:
+          selectedGoal?.name ||
+          formData.goalName ||
+          "Visit Follow-up",
+
+        programGoalInformationalStatus:
+          null,
+
+        noThresholdMessages:
+          formData.threshold + "",
+
+        programScheduledTime:
+          getTimeIn24Hour(
+            formData.textTime
+          ),
+
         programOldScheduledTime: "0",
+
         publishChannel: [1],
+
         updateFlag: true,
+
         activeStatus: 1,
-        externalData: formData.externalDataRequired ? 1 : 0,
-        vptc: formData.pacEnabled ? 1 : 0,
-        pmsId: pmsId,
-        programStartDate: formData.fromDate,
-        programEndDate: formData.toDate,
-        payerId: formData.pacEnabled ? Number(formData.selectedCustomer) : null,
-        payerName: formData.pacEnabled ? (selectedPayer?.name || "") : "",
+
+        externalData:
+          formData.externalDataRequired
+            ? 1
+            : 0,
+
+        vptc: formData.pacEnabled
+          ? 1
+          : 0,
+
+        pmsId,
+
+        programStartDate:
+          formData.fromDate,
+
+        programEndDate:
+          formData.toDate,
+
+        payerId: formData.pacEnabled
+          ? Number(
+              formData.selectedCustomer
+            )
+          : null,
+
+        payerName: formData.pacEnabled
+          ? selectedPayer?.name || ""
+          : "",
       };
 
-      console.log("Creating program with payload:", payload);
-      
-      // Call the API
-      const response = await smartReachApi.createProgram(payload);
-      console.log("Create program response:", response);
-      
-      // Handle response - match Angular logic
-      if (response && response.message === "Program created successfully") {
-        shared.toast?.success?.(response.message);
+      console.log(
+        "Creating program with payload:",
+        payload
+      );
+
+      const response =
+        await smartReachApi.createProgram(
+          payload
+        );
+
+      console.log(
+        "Create program response:",
+        response
+      );
+
+      if (
+        response &&
+        response.message ===
+          "Program created successfully"
+      ) {
+        shared.toast?.success?.(
+          response.message
+        );
+
         onUpdate();
         onClose();
-      } else if (response && response.message) {
-        shared.toast?.error?.(response.message);
+      } else if (
+        response &&
+        response.message
+      ) {
+        shared.toast?.error?.(
+          response.message
+        );
       } else {
-        // If response doesn't have message property but request was successful
-        shared.toast?.success?.("Program created successfully");
+        shared.toast?.success?.(
+          "Program created successfully"
+        );
+
         onUpdate();
         onClose();
       }
     } catch (error) {
-      console.error("Error creating program:", error);
-      
-      // Handle error response - match Angular logic
-      if (error.response?.data?.message) {
-        shared.toast?.error?.(error.response.data.message);
+      console.error(
+        "Error creating program:",
+        error
+      );
+
+      if (
+        error.response?.data?.message
+      ) {
+        shared.toast?.error?.(
+          error.response.data.message
+        );
       } else if (error.message) {
-        shared.toast?.error?.(error.message);
+        shared.toast?.error?.(
+          error.message
+        );
       } else {
-        shared.toast?.error?.("Something went wrong. Please try again.");
+        shared.toast?.error?.(
+          "Something went wrong. Please try again."
+        );
       }
     } finally {
       setLoading(false);
     }
   };
 
+  // ============================================================
+  // UI
+  // ============================================================
+
   return (
     <>
+      {/* Overlay */}
       <div
         className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4"
         onMouseDown={(event) => {
-          if (event.target === event.currentTarget) {
+          if (
+            event.target ===
+            event.currentTarget
+          ) {
             handleClose();
           }
         }}
       >
+        {/* Modal */}
         <div
-          className="my-8 w-full max-w-4xl rounded-xl border border-slate-200 bg-white shadow-xl"
-          onMouseDown={(event) => event.stopPropagation()}
+          className="my-8 w-full max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+          onMouseDown={(event) =>
+            event.stopPropagation()
+          }
         >
+          {/* ================================================== */}
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          {/* ================================================== */}
+
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
             <h2 className="text-lg font-bold text-slate-900">
               Create Program
+
               {loading && (
                 <span className="ml-2 text-sm font-normal text-slate-500">
                   Loading...
                 </span>
               )}
             </h2>
+
             <button
               type="button"
               onClick={handleClose}
-              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+              className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-60"
               aria-label="Close"
+              disabled={loading}
             >
               <X size={20} />
             </button>
           </div>
 
+          {/* ================================================== */}
           {/* Body */}
+          {/* ================================================== */}
+
           <div className="space-y-6 px-6 py-5">
-            {loading && !formData.programName ? (
+            {loading &&
+            !formData.programName ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-3 text-slate-500">
                   <svg
@@ -397,423 +758,452 @@ const CreateProgram = ({ onClose, onUpdate }) => {
                       d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                     />
                   </svg>
-                  <span>Loading...</span>
+
+                  <span>
+                    Loading...
+                  </span>
                 </div>
               </div>
             ) : (
               <>
+                {/* ================================================== */}
                 {/* Program Name */}
-                <div>
+                {/* ================================================== */}
+
+                <div className="flex items-center">
+                  <label className="w-32 shrink-0 text-sm font-semibold text-slate-700">
+                    Program Name
+                  </label>
+
                   <input
                     type="text"
-                    value={formData.programName}
-                    onChange={(event) =>
-                      handleChange("programName", event.target.value)
+                    value={
+                      formData.programName
                     }
-                    className="h-[66px] w-full rounded-lg border border-slate-300 bg-slate-50 px-4 text-[22px] text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    placeholder="Program Name"
+                    onChange={(event) =>
+                      handleChange(
+                        "programName",
+                        event.target.value
+                      )
+                    }
+                    className="h-10 flex-1 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                    placeholder="Enter program name"
                     disabled={loading}
                   />
                 </div>
 
-                {/* External Data Required and PAC in same row */}
+                {/* ================================================== */}
+                {/* External Data + PAC */}
+                {/* ================================================== */}
+
                 <div className="grid grid-cols-2 gap-6">
-                  {/* External Data Required */}
+                  {/* External Data */}
+
                   <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "16px",
-                          fontWeight: 600,
-                          color: "#334155",
-                        }}
-                      >
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <span className="text-sm font-semibold text-slate-700">
                         External Data Required
                       </span>
-                      <Info size={20} className="fill-blue-600 text-white" />
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                        border: "1px solid #d1d5db",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleChange("externalDataRequired", true)}
-                        style={{
-                          height: "44px",
-                          width: "84px",
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          transition: "all 0.2s",
-                          cursor: loading ? "not-allowed" : "pointer",
-                          backgroundColor:
-                            formData.externalDataRequired === true
-                              ? "#10b981"
-                              : "#ffffff",
-                          color:
-                            formData.externalDataRequired === true
-                              ? "#ffffff"
-                              : "#475569",
-                          border: "none",
-                          borderRight: "1px solid #d1d5db",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!formData.externalDataRequired) {
-                            e.target.style.backgroundColor = "#f8fafc";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!formData.externalDataRequired) {
-                            e.target.style.backgroundColor = "#ffffff";
-                          }
-                        }}
+
+                    <div className="inline-flex overflow-hidden rounded-md border border-slate-300 shadow-sm divide-x divide-slate-300">
+                      <ToggleButton
+                        value={true}
+                        currentValue={
+                          formData.externalDataRequired
+                        }
+                        label="Yes"
+                        onChange={(value) =>
+                          handleChange(
+                            "externalDataRequired",
+                            value
+                          )
+                        }
                         disabled={loading}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleChange("externalDataRequired", false)}
-                        style={{
-                          height: "44px",
-                          width: "58px",
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          transition: "all 0.2s",
-                          cursor: loading ? "not-allowed" : "pointer",
-                          backgroundColor:
-                            formData.externalDataRequired === false
-                              ? "#10b981"
-                              : "#ffffff",
-                          color:
-                            formData.externalDataRequired === false
-                              ? "#ffffff"
-                              : "#475569",
-                          border: "none",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (formData.externalDataRequired !== false) {
-                            e.target.style.backgroundColor = "#f8fafc";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (formData.externalDataRequired !== false) {
-                            e.target.style.backgroundColor = "#ffffff";
-                          }
-                        }}
+                      />
+
+                      <ToggleButton
+                        value={false}
+                        currentValue={
+                          formData.externalDataRequired
+                        }
+                        label="No"
+                        onChange={(value) =>
+                          handleChange(
+                            "externalDataRequired",
+                            value
+                          )
+                        }
                         disabled={loading}
-                      >
-                        No
-                      </button>
+                      />
                     </div>
                   </div>
 
-                  {/* PAC Toggle */}
+                  {/* PAC */}
+
                   <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "16px",
-                          fontWeight: 600,
-                          color: "#334155",
-                        }}
-                      >
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <span className="text-sm font-semibold text-slate-700">
                         PAC
                       </span>
-                      <Info size={20} className="fill-blue-600 text-white" />
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                        border: "1px solid #d1d5db",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handlePACChange(true)}
-                        style={{
-                          height: "44px",
-                          width: "84px",
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          transition: "all 0.2s",
-                          cursor: loading ? "not-allowed" : "pointer",
-                          backgroundColor:
-                            formData.pacEnabled === true
-                              ? "#10b981"
-                              : "#ffffff",
-                          color:
-                            formData.pacEnabled === true
-                              ? "#ffffff"
-                              : "#475569",
-                          border: "none",
-                          borderRight: "1px solid #d1d5db",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!formData.pacEnabled) {
-                            e.target.style.backgroundColor = "#f8fafc";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!formData.pacEnabled) {
-                            e.target.style.backgroundColor = "#ffffff";
-                          }
-                        }}
+
+                    <div className="inline-flex overflow-hidden rounded-md border border-slate-300 shadow-sm divide-x divide-slate-300">
+                      <ToggleButton
+                        value={true}
+                        currentValue={
+                          formData.pacEnabled
+                        }
+                        label="Yes"
+                        onChange={
+                          handlePACChange
+                        }
                         disabled={loading}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePACChange(false)}
-                        style={{
-                          height: "44px",
-                          width: "58px",
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          transition: "all 0.2s",
-                          cursor: loading ? "not-allowed" : "pointer",
-                          backgroundColor:
-                            formData.pacEnabled === false
-                              ? "#10b981"
-                              : "#ffffff",
-                          color:
-                            formData.pacEnabled === false
-                              ? "#ffffff"
-                              : "#475569",
-                          border: "none",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (formData.pacEnabled !== false) {
-                            e.target.style.backgroundColor = "#f8fafc";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (formData.pacEnabled !== false) {
-                            e.target.style.backgroundColor = "#ffffff";
-                          }
-                        }}
+                      />
+
+                      <ToggleButton
+                        value={false}
+                        currentValue={
+                          formData.pacEnabled
+                        }
+                        label="No"
+                        onChange={
+                          handlePACChange
+                        }
                         disabled={loading}
-                      >
-                        No
-                      </button>
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Payer Analytics Customer Dropdown - Only show when PAC is Yes */}
+                {/* ================================================== */}
+                {/* Payer Analytics Customer */}
+                {/* ================================================== */}
+
                 {formData.pacEnabled && (
                   <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "16px",
-                          fontWeight: 600,
-                          color: "#334155",
-                        }}
-                      >
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                      <span className="text-sm font-semibold text-slate-700">
                         Payer Analytics Customer
                       </span>
-                      <Info size={20} className="fill-blue-600 text-white" />
+
+                      <Info
+                        size={15}
+                        className="shrink-0 text-slate-400"
+                      />
                     </div>
+
                     <select
-                      value={formData.selectedCustomer}
-                      onChange={handleCustomerChange}
-                      className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={
+                        formData.selectedCustomer
+                      }
+                      onChange={
+                        handleCustomerChange
+                      }
+                      className={inputClass}
                       disabled={loading}
-                      style={{ height: "44px" }}
                     >
-                      <option value="">Select a customer...</option>
+                      <option value="">
+                        Select a customer...
+                      </option>
+
                       {payers.length > 0 ? (
-                        payers.map((payer) => (
-                          <option key={payer.id} value={payer.id}>
-                            {payer.name}
-                          </option>
-                        ))
+                        payers.map(
+                          (payer) => (
+                            <option
+                              key={payer.id}
+                              value={payer.id}
+                            >
+                              {payer.name}
+                            </option>
+                          )
+                        )
                       ) : (
                         <>
-                          <option value="22">Ajayt</option>
-                          <option value="1">Suneel Payer</option>
-                          <option value="2">PyaerGroup43</option>
-                          <option value="3">California</option>
-                          <option value="4">PayerGroup21</option>
+                          <option value="22">
+                            Ajayt
+                          </option>
+
+                          <option value="1">
+                            Suneel Payer
+                          </option>
+
+                          <option value="2">
+                            PyaerGroup43
+                          </option>
+
+                          <option value="3">
+                            California
+                          </option>
+
+                          <option value="4">
+                            PayerGroup21
+                          </option>
                         </>
                       )}
                     </select>
                   </div>
                 )}
 
-                {/* Goal and Text Time */}
+                {/* ================================================== */}
+                {/* Goal + Text Time */}
+                {/* ================================================== */}
+
                 <div className="grid grid-cols-2 gap-6">
+                  {/* Goal */}
+
                   <div>
-                    <label className="mb-1 block text-sm font-semibold text-slate-700">
+                    <label
+                      className={labelClass}
+                    >
                       Goal of Program
                     </label>
+
                     <select
-                      value={formData.goalId}
+                      value={
+                        formData.goalId
+                      }
                       onChange={(event) => {
-                        const selectedGoal = goals.find(
-                          (g) => String(g.id) === event.target.value
+                        const selectedGoal =
+                          goals.find(
+                            (goal) =>
+                              String(
+                                goal.id
+                              ) ===
+                              event.target
+                                .value
+                          );
+
+                        handleChange(
+                          "goalId",
+                          event.target.value
                         );
-                        handleChange("goalId", event.target.value);
-                        handleChange("goalName", selectedGoal?.name || "");
+
+                        handleChange(
+                          "goalName",
+                          selectedGoal?.name ||
+                            ""
+                        );
                       }}
-                      className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      className={
+                        inputClass
+                      }
                       disabled={loading}
                     >
-                      <option value="">Select a goal...</option>
+                      <option value="">
+                        Select a goal...
+                      </option>
+
                       {goals.length > 0 ? (
-                        goals.map((goal) => (
-                          <option key={goal.id} value={goal.id}>
-                            {goal.name || goal.label || goal.value}
-                          </option>
-                        ))
+                        goals.map(
+                          (goal) => (
+                            <option
+                              key={goal.id}
+                              value={goal.id}
+                            >
+                              {goal.name ||
+                                goal.label ||
+                                goal.value}
+                            </option>
+                          )
+                        )
                       ) : (
                         <>
-                          <option value="1">Visit Follow-up</option>
-                          <option value="2">Appointment Reminder</option>
-                          <option value="3">Patient Follow-up</option>
+                          <option value="1">
+                            Visit Follow-up
+                          </option>
+
+                          <option value="2">
+                            Appointment Reminder
+                          </option>
+
+                          <option value="3">
+                            Patient Follow-up
+                          </option>
                         </>
                       )}
                     </select>
                   </div>
+
+                  {/* Text Time */}
+
                   <div>
-                    <label className="mb-1 block text-sm font-semibold text-slate-700">
+                    <label
+                      className={labelClass}
+                    >
                       Text Time
                     </label>
+
                     <select
-                      value={formData.textTime}
-                      onChange={(event) =>
-                        handleChange("textTime", event.target.value)
+                      value={
+                        formData.textTime
                       }
-                      className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      onChange={(event) =>
+                        handleChange(
+                          "textTime",
+                          event.target.value
+                        )
+                      }
+                      className={
+                        inputClass
+                      }
                       disabled={loading}
                     >
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
+                      {timeOptions.map(
+                        (time) => (
+                          <option
+                            key={time}
+                            value={time}
+                          >
+                            {time}
+                          </option>
+                        )
+                      )}
                     </select>
                   </div>
                 </div>
 
+                {/* ================================================== */}
                 {/* Dates */}
+                {/* ================================================== */}
+
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  <label
+                    className={labelClass}
+                  >
                     Dates
                   </label>
+
                   <div className="grid grid-cols-2 gap-6">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-slate-600">
-                        From:
+                    {/* From */}
+
+                    <div>
+                      <span
+                        className={
+                          subLabelClass
+                        }
+                      >
+                        From
                       </span>
-                      <div className="relative flex-1">
-                        <input
-                          type="date"
-                          value={formData.fromDate}
-                          onChange={(event) =>
-                            handleChange("fromDate", event.target.value)
-                          }
-                          className="h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                          disabled={loading}
-                        />
-                        <CalendarDays
-                          size={20}
-                          className="pointer-events-none absolute right-3 top-3 text-slate-400"
-                        />
-                      </div>
+
+                      <input
+                        type="date"
+                        value={
+                          formData.fromDate
+                        }
+                        onChange={(event) =>
+                          handleChange(
+                            "fromDate",
+                            event.target.value
+                          )
+                        }
+                        className={`${inputClass} [color-scheme:light]`}
+                        disabled={loading}
+                      />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-slate-600">
-                        To:
+
+                    {/* To */}
+
+                    <div>
+                      <span
+                        className={
+                          subLabelClass
+                        }
+                      >
+                        To
                       </span>
-                      <div className="relative flex-1">
-                        <input
-                          type="date"
-                          value={formData.toDate}
-                          onChange={(event) =>
-                            handleChange("toDate", event.target.value)
-                          }
-                          className="h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                          disabled={loading}
-                        />
-                        <CalendarDays
-                          size={20}
-                          className="pointer-events-none absolute right-3 top-3 text-slate-400"
-                        />
-                      </div>
+
+                      <input
+                        type="date"
+                        value={
+                          formData.toDate
+                        }
+                        onChange={(event) =>
+                          handleChange(
+                            "toDate",
+                            event.target.value
+                          )
+                        }
+                        className={`${inputClass} [color-scheme:light]`}
+                        disabled={loading}
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Threshold / Allocation */}
+                {/* ================================================== */}
+                {/* Threshold */}
+                {/* ================================================== */}
+
                 <div>
-                  <div className="flex items-center gap-3">
-                    <div className="pb-2 border-b border-slate-300">
-                      <label className="text-sm font-semibold text-slate-700">
-                        Threshold :{" "}
-                      </label>
-                      <input
-                        type="text"
-                        value={
-                          formData.threshold
-                            ? formatPlainNumber(formData.threshold)
-                            : ""
-                        }
-                        onChange={(event) =>
-                          handleThresholdChange(event.target.value)
-                        }
-                        className="w-[100px] border-0 bg-transparent px-1 text-sm text-slate-800 outline-none"
-                        disabled={loading}
-                        placeholder="0"
-                        maxLength={4}
-                      />
-                      <span className="text-sm text-slate-600">
-                        {" "}
-                        / {formatPlainNumber(totalTextLimit)}
-                      </span>
-                    </div>
-                    <div className="ms-2 pb-2">
-                      <span className="text-sm text-slate-600">
-                        {perOccupiedFormatted}% Text Allocation
-                      </span>
-                    </div>
+                  <label
+                    className={labelClass}
+                  >
+                    Threshold
+                  </label>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={
+                        formData.threshold
+                          ? formatPlainNumber(
+                              formData.threshold
+                            )
+                          : ""
+                      }
+                      onChange={(event) =>
+                        handleThresholdChange(
+                          event.target.value
+                        )
+                      }
+                      className="h-10 w-28 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                      disabled={loading}
+                      placeholder="0"
+                      maxLength={4}
+                    />
+
+                    <span className="text-sm text-slate-500">
+                      /{" "}
+                      {formatPlainNumber(
+                        totalTextLimit
+                      )}
+                    </span>
+
+                    <span className="text-sm text-slate-500">
+                      {perOccupiedFormatted}%
+                      allocated
+                    </span>
                   </div>
-                  <div className="mt-1 text-sm text-slate-600">
+
+                  {/* Allocation Bar */}
+
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all"
+                      style={{
+                        width: `${Math.min(
+                          perOccupied,
+                          100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+
+                  {/* Remaining */}
+
+                  <div className="mt-1.5 text-sm">
                     {remaining === 0 ? (
-                      <span className="text-emerald-600 font-medium">
-                        0 Remaining
+                      <span className="font-medium text-emerald-600">
+                        0 remaining
                       </span>
                     ) : (
-                      <span>{formatPlainNumber(remaining)} Remaining</span>
+                      <span className="text-slate-500">
+                        {formatPlainNumber(
+                          remaining
+                        )}{" "}
+                        remaining
+                      </span>
                     )}
                   </div>
                 </div>
@@ -821,30 +1211,45 @@ const CreateProgram = ({ onClose, onUpdate }) => {
             )}
           </div>
 
+          {/* ================================================== */}
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
+          {/* ================================================== */}
+
+          <div className="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50/50 px-6 py-4">
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="rounded-lg border border-slate-300 bg-white px-6 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60"
+              className="h-10 rounded-md border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
+
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || !formData.programName}
-              className="rounded-lg bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={
+                loading ||
+                !formData.programName
+              }
+              className="h-10 rounded-md bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Creating..." : "Create Program"}
+              {loading
+                ? "Creating..."
+                : "Create Program"}
             </button>
           </div>
         </div>
       </div>
 
+      {/* ================================================== */}
       {/* Confirm Dialog */}
-      <ConfirmDialog open={showConfirmDialog} onClose={handleConfirmClose} />
+      {/* ================================================== */}
+
+      <ConfirmDialog
+        open={showConfirmDialog}
+        onClose={handleConfirmClose}
+      />
     </>
   );
 };
