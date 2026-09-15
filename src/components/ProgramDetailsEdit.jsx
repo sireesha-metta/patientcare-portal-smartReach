@@ -2390,7 +2390,13 @@ const handleClose = () => {
   };
 
   useEffect(() => {
-    if (program) fetchData();
+    if (!program) return;
+
+    const loadProgramData = async () => {
+      await fetchData();
+    };
+
+    loadProgramData();
   }, [program]);
 
   // ============================================================
