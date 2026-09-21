@@ -1534,7 +1534,7 @@ case "displayCriteria": {
       // Call the programCriteria API
       await smartReachApi.programCriteria(payload);
 
-      console.log("✅ PROGRAM CRITERIA POST SUCCESS");
+      // console.log("✅ PROGRAM CRITERIA POST SUCCESS");
 
       // Update the selected criteria list
       const updated = await smartReachApi.getSelectedCriteria(program.id);

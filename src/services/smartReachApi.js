@@ -1368,7 +1368,7 @@ export const smartReachApi = {
         },
       });
 
-      console.log("✅ Program deleted successfully:", response.data);
+      // console.log("✅ Program deleted successfully:", response.data);
       return response?.data;
     } catch (error) {
       console.error("❌ Delete Program Error:", error);
@@ -1393,7 +1393,7 @@ export const smartReachApi = {
         JSON.stringify(payload, null, 2),
       );
       const response = await client().post("/programs", payload);
-      console.log("✅ Program created successfully:", response.data);
+      // console.log("✅ Program created successfully:", response.data);
       return response?.data;
     } catch (error) {
       console.error("❌ Create Program Error:", error);
