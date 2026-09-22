@@ -269,6 +269,7 @@ export default function SmartReachPage() {
     try {
       setLoading(true);
       const response = await smartReachApi.getPracticePrograms();
+      
       const programs = Array.isArray(response) ? response : [];
       const mappedData = programs.map((program, index) => ({
         id: String(program.programId ?? index + 1),

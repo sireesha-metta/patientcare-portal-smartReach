@@ -649,7 +649,21 @@ export const smartReachApi = {
       throw error;
     }
   },
-
+  async getGoalByName(goalName) {
+    try {
+      const encodedName = encodeURIComponent(goalName ?? "");
+      const response = await client().get(`/goals/${encodedName}`);
+      const result = unwrapData(response);
+      return result;
+    } catch (error) {
+      console.error("❌ Get Goal By Name Error:", error);
+      if (error.response) {
+        console.error("❌ Error Response Data:", error.response.data);
+        console.error("❌ Error Status:", error.response.status);
+      }
+      throw error;
+    }
+  },
   // ============================================================
   // CRITERIA FREQUENCY (POST /criteriafrequency)
   // ============================================================

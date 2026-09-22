@@ -99,14 +99,37 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
   };
 
   // ---------------------------------------------------------
+  // Extract hour (0-23) from a schedule value
+  // Accepts: number (already an hour), Date, or date/time string
+  // ---------------------------------------------------------
+
+  const extractHourFromSchedule = (scheduleTime) => {
+    if (scheduleTime === null || scheduleTime === undefined) return 9;
+
+    // Already an hour number
+    if (typeof scheduleTime === "number" && !isNaN(scheduleTime)) {
+      return scheduleTime;
+    }
+
+    try {
+      const date = new Date(scheduleTime);
+      if (isNaN(date.getTime())) return 9;
+      return date.getHours();
+    } catch {
+      return 9;
+    }
+  };
+
+  // ---------------------------------------------------------
   // Convert time to schedule format
+  // Returns local "YYYY-MM-DD HH:mm:ss" string (no UTC shift)
   // ---------------------------------------------------------
 
   const convertTimeToSchedule = (timeStr, dateStr) => {
     if (!timeStr || !dateStr) return null;
 
     try {
-      const hour = parseInt(timeStr);
+      const hour = parseInt(timeStr, 10);
       const ampm = timeStr.slice(-2);
 
       let hours = hour;
@@ -119,14 +142,21 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
         hours = 0;
       }
 
-      const date = new Date(dateStr);
-
-      date.setHours(hours, 0, 0, 0);
-
-      return date.toISOString().slice(0, 19).replace("T", " ");
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${dateStr} ${pad(hours)}:00:00`;
     } catch {
       return null;
     }
+  };
+
+  // ---------------------------------------------------------
+  // Extract hour from "YYYY-MM-DD HH:mm:ss" string
+  // ---------------------------------------------------------
+
+  const hourFromScheduleString = (scheduleStr) => {
+    if (!scheduleStr) return 9;
+    const match = scheduleStr.match(/\s(\d{2}):/);
+    return match ? parseInt(match[1], 10) : 9;
   };
 
   // ---------------------------------------------------------
@@ -211,14 +241,11 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
 
           setInitialThreshold(initialThresholdValue);
 
-          const externalDataRequired =
-            infoData.externalData === 1;
+          const externalDataRequired = infoData.externalData === 1;
 
           setVptc(infoData.vptc || false);
 
-          setPayerTeamCustomer(
-            infoData.payerTeamCustomer || null
-          );
+          setPayerTeamCustomer(infoData.payerTeamCustomer || null);
 
           setPayerTeamCustomerName(
             infoData.payerTeamCustomerName || ""
@@ -241,9 +268,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
               matchedGoal?.name ??
               "Visit Follow-up",
 
-            textTime: extractTimeFromSchedule(
-              infoData.scheduleTime
-            ),
+            textTime: extractTimeFromSchedule(infoData.scheduleTime),
 
             fromDate: infoData.startDate ?? "",
 
@@ -260,10 +285,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
         console.error("Error fetching program data:", error);
 
         shared.toast?.error?.(
-          apiErrorText(
-            error,
-            "Failed to load program data"
-          )
+          apiErrorText(error, "Failed to load program data")
         );
 
         setFormData({
@@ -311,8 +333,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
         const practiceRole =
           shared.userDetails?.roles?.practicerole?.[0];
 
-        const totalTextLimit =
-          practiceRole?.practiceTextLimit || 0;
+        const totalTextLimit = practiceRole?.practiceTextLimit || 0;
 
         const remainingWithNewValue =
           totalTextLimit -
@@ -336,15 +357,10 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
             totalThreshold +
             initialThreshold;
 
-          handleChange(
-            "threshold",
-            String(maxAllowed)
-          );
+          handleChange("threshold", String(maxAllowed));
         }
       } else {
-        shared.toast?.warning?.(
-          "Threshold cannot exceed 4 digits"
-        );
+        shared.toast?.warning?.("Threshold cannot exceed 4 digits");
       }
     }
   };
@@ -355,22 +371,18 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
 
   const userDetails = shared.userDetails;
 
-  const practiceRole =
-    userDetails?.roles?.practicerole?.[0];
+  const practiceRole = userDetails?.roles?.practicerole?.[0];
 
-  const totalTextLimit =
-    practiceRole?.practiceTextLimit || 0;
+  const totalTextLimit = practiceRole?.practiceTextLimit || 0;
 
-  const thresholdValue =
-    parseNumber(formData.threshold);
+  const thresholdValue = parseNumber(formData.threshold);
 
   const perOccupied =
     totalTextLimit > 0
       ? (thresholdValue / totalTextLimit) * 100
       : 0;
 
-  const perOccupiedFormatted =
-    perOccupied.toFixed(2);
+  const perOccupiedFormatted = perOccupied.toFixed(2);
 
   const remaining =
     totalTextLimit -
@@ -384,8 +396,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
 
   const handleClose = () => {
     const hasChanges =
-      formData.threshold !==
-      String(programInfo?.threshold || "");
+      formData.threshold !== String(programInfo?.threshold || "");
 
     if (hasChanges) {
       setShowConfirmDialog(true);
@@ -411,9 +422,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
       !formData.threshold ||
       parseNumber(formData.threshold) === 0
     ) {
-      shared.toast?.error?.(
-        "Please enter a threshold value"
-      );
+      shared.toast?.error?.("Please enter a threshold value");
       return;
     }
 
@@ -425,53 +434,75 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
         formData.fromDate
       );
 
+      // Old scheduled hour (from server data) as a NUMBER
+      const programOldScheduledTime = extractHourFromSchedule(
+        programInfo?.scheduleTime
+      );
+
+      // New scheduled hour as a NUMBER
+      const programScheduledTime =
+        hourFromScheduleString(scheduleTime);
+
+      // Build payload matching the API contract
       const payload = {
-        programId: Number(program.id),
+        activeStatus: 1,
 
-        programName: formData.programName,
-
-        externalDataRequired:
-          formData.externalDataRequired ? 1 : 0,
+        externalData: formData.externalDataRequired ? 1 : 0,
 
         goalId: Number(formData.goalId) || 2,
 
         goalName: formData.goalName,
 
-        scheduleTime:
-          scheduleTime ||
-          `${formData.fromDate} ${formData.textTime}`,
+        noThresholdMessages: String(parseNumber(formData.threshold)),
 
-        startDate: formData.fromDate,
+        payerId: payerTeamCustomer?.id ?? payerTeamCustomer ?? null,
 
-        endDate: formData.toDate,
+        pmsId: String(program.id),
 
-        threshold: parseNumber(formData.threshold),
+        programEndDate: formData.toDate || null,
+
+        programGoalInformationalStatus: null,
+
+        programId: Number(program.id),
+
+        programName: formData.programName,
+
+        programOldScheduledTime,
+
+        programScheduledTime,
+
+        programStartDate: formData.fromDate,
+
+        publishChannel: [1],
+
+        updateFlag: true,
+
+        vptc: vptc ?? false,
       };
 
-      await smartReachApi.updateProgramInfo(payload);
+      console.log("Update Program Payload:", payload);
+
+      // 1. Update program
+      await smartReachApi.createProgram(payload);
+
+      // 2. Get goal-specific information
+      await smartReachApi.getGoalByName(formData.goalName);
+
+      // 3. Refresh program list
+      await smartReachApi.getPracticePrograms();
 
       onUpdate({
         ...program,
         ...formData,
-        threshold: parseNumber(
-          formData.threshold
-        ),
+        threshold: parseNumber(formData.threshold),
       });
 
-      shared.toast?.success?.(
-        "Program updated successfully"
-      );
+      shared.toast?.success?.("Program updated successfully");
     } catch (error) {
-      console.error(
-        "Error updating program:",
-        error
-      );
+      console.error("Error updating program:", error);
 
       shared.toast?.error?.(
-        apiErrorText(
-          error,
-          "Failed to update program"
-        )
+        apiErrorText(error, "Failed to update program")
       );
     } finally {
       setLoading(false);
@@ -485,8 +516,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
   const inputClass =
     "h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-70";
 
-  const labelClass =
-    "text-sm font-semibold text-slate-700";
+  const labelClass = "text-sm font-semibold text-slate-700";
 
   return (
     <>
@@ -502,9 +532,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
         {/* Modal */}
         <div
           className="my-8 w-full max-w-4xl rounded-xl border border-slate-200 bg-white shadow-xl"
-          onMouseDown={(event) =>
-            event.stopPropagation()
-          }
+          onMouseDown={(event) => event.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
@@ -547,9 +575,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     />
                   </svg>
 
-                  <span>
-                    Loading program data...
-                  </span>
+                  <span>Loading program data...</span>
                 </div>
               </div>
             ) : (
@@ -564,10 +590,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     type="text"
                     value={formData.programName}
                     onChange={(event) =>
-                      handleChange(
-                        "programName",
-                        event.target.value
-                      )
+                      handleChange("programName", event.target.value)
                     }
                     className={inputClass}
                     placeholder="Enter program name"
@@ -605,10 +628,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                       <button
                         type="button"
                         onClick={() =>
-                          handleChange(
-                            "externalDataRequired",
-                            true
-                          )
+                          handleChange("externalDataRequired", true)
                         }
                         disabled={loading}
                         className={`h-10 min-w-[68px] border-r border-slate-300 px-4 text-sm font-semibold transition ${
@@ -627,10 +647,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                       <button
                         type="button"
                         onClick={() =>
-                          handleChange(
-                            "externalDataRequired",
-                            false
-                          )
+                          handleChange("externalDataRequired", false)
                         }
                         disabled={loading}
                         className={`h-10 min-w-[68px] px-4 text-sm font-semibold transition ${
@@ -655,13 +672,10 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                         <span className={labelClass}>
                           Payer Analytics Customer
                         </span>
-
-                      
                       </div>
 
                       <div className="flex h-10 w-full items-center  px-3 text-sm text-slate-800">
-                        {payerTeamCustomerName ||
-                          "Not assigned"}
+                        {payerTeamCustomerName || "Not assigned"}
                       </div>
                     </div>
                   )}
@@ -670,11 +684,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                   {vptc && (
                     <div>
                       <div className="mb-1.5 flex items-center gap-1.5">
-                        <span className={labelClass}>
-                          PAC
-                        </span>
-
-                      
+                        <span className={labelClass}>PAC</span>
                       </div>
 
                       <div className="flex h-10 w-full items-center  px-3 text-sm text-slate-800">
@@ -695,17 +705,11 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     <select
                       value={formData.goalId}
                       onChange={(event) => {
-                        const selectedGoal =
-                          goals.find(
-                            (g) =>
-                              String(g.id) ===
-                              event.target.value
-                          );
-
-                        handleChange(
-                          "goalId",
-                          event.target.value
+                        const selectedGoal = goals.find(
+                          (g) => String(g.id) === event.target.value
                         );
+
+                        handleChange("goalId", event.target.value);
 
                         handleChange(
                           "goalName",
@@ -715,34 +719,19 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                       className={inputClass}
                       disabled={loading}
                     >
-                      <option value="">
-                        Select a goal...
-                      </option>
+                      <option value="">Select a goal...</option>
 
                       {goals.length > 0 ? (
                         goals.map((goal) => (
-                          <option
-                            key={goal.id}
-                            value={goal.id}
-                          >
-                            {goal.name ||
-                              goal.label ||
-                              goal.value}
+                          <option key={goal.id} value={goal.id}>
+                            {goal.name || goal.label || goal.value}
                           </option>
                         ))
                       ) : (
                         <>
-                          <option value="1">
-                            Visit Follow-up
-                          </option>
-
-                          <option value="2">
-                            Appointment Reminder
-                          </option>
-
-                          <option value="3">
-                            Patient Follow-up
-                          </option>
+                          <option value="1">Visit Follow-up</option>
+                          <option value="2">Appointment Reminder</option>
+                          <option value="3">Patient Follow-up</option>
                         </>
                       )}
                     </select>
@@ -757,19 +746,13 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     <select
                       value={formData.textTime}
                       onChange={(event) =>
-                        handleChange(
-                          "textTime",
-                          event.target.value
-                        )
+                        handleChange("textTime", event.target.value)
                       }
                       className={inputClass}
                       disabled={loading}
                     >
                       {timeOptions.map((time) => (
-                        <option
-                          key={time}
-                          value={time}
-                        >
+                        <option key={time} value={time}>
                           {time}
                         </option>
                       ))}
@@ -795,16 +778,11 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                           type="date"
                           value={formData.fromDate}
                           onChange={(event) =>
-                            handleChange(
-                              "fromDate",
-                              event.target.value
-                            )
+                            handleChange("fromDate", event.target.value)
                           }
                           className={`${inputClass} pr-10`}
                           disabled={loading}
                         />
-
-                        
                       </div>
                     </div>
 
@@ -819,16 +797,11 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                           type="date"
                           value={formData.toDate}
                           onChange={(event) =>
-                            handleChange(
-                              "toDate",
-                              event.target.value
-                            )
+                            handleChange("toDate", event.target.value)
                           }
                           className={`${inputClass} pr-10`}
                           disabled={loading}
                         />
-
-                        
                       </div>
                     </div>
                   </div>
@@ -846,15 +819,11 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                         type="text"
                         value={
                           formData.threshold
-                            ? formatPlainNumber(
-                                formData.threshold
-                              )
+                            ? formatPlainNumber(formData.threshold)
                             : ""
                         }
                         onChange={(event) =>
-                          handleThresholdChange(
-                            event.target.value
-                          )
+                          handleThresholdChange(event.target.value)
                         }
                         className="h-10 w-24 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                         disabled={loading}
@@ -863,17 +832,11 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                       />
 
                       <span className="text-sm text-slate-500">
-                        /
-                        {" "}
-                        {formatPlainNumber(
-                          totalTextLimit
-                        )}
+                        / {formatPlainNumber(totalTextLimit)}
                       </span>
 
                       <span className="ml-2 text-sm text-slate-500">
-                        {perOccupiedFormatted}%
-                        {" "}
-                        allocated
+                        {perOccupiedFormatted}% allocated
                       </span>
                     </div>
                   </div>
@@ -886,10 +849,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                       </span>
                     ) : (
                       <span className="text-slate-500">
-                        {formatPlainNumber(
-                          remaining
-                        )}{" "}
-                        Remaining
+                        {formatPlainNumber(remaining)} Remaining
                       </span>
                     )}
                   </div>
@@ -899,10 +859,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     <div
                       className="h-full rounded-full bg-emerald-500 transition-all"
                       style={{
-                        width: `${Math.min(
-                          perOccupied,
-                          100
-                        )}%`,
+                        width: `${Math.min(perOccupied, 100)}%`,
                       }}
                     />
                   </div>
@@ -916,14 +873,10 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={
-                loading || !formData.programName
-              }
+              disabled={loading || !formData.programName}
               className="rounded-md bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading
-                ? "Saving..."
-                : "Update Program"}
+              {loading ? "Saving..." : "Update Program"}
             </button>
 
             <button
@@ -948,4 +901,3 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
 };
 
 export default ProgramInfoEdit;
-
