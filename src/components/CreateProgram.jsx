@@ -184,15 +184,9 @@ const CreateProgram = ({ onClose, onUpdate }) => {
     return String(hours);
   };
 
-  // ============================================================
-  // Fetch Parent Site
-  // ============================================================
-
   const fetchParentSite = async () => {
     try {
       const response = await smartReachApi.getParentSite();
-
-      console.log("Parent Site Response:", response);
 
       setParentSite(response);
 
@@ -207,17 +201,10 @@ const CreateProgram = ({ onClose, onUpdate }) => {
     }
   };
 
-  // ============================================================
-  // Fetch Payers
-  // ============================================================
-
   const fetchPayers = async () => {
     try {
       const response =
         await smartReachApi.getSmartReachPayer();
-
-      console.log("Full response:", response);
-
       let payerData = [];
 
       if (response) {
@@ -246,18 +233,9 @@ const CreateProgram = ({ onClose, onUpdate }) => {
         }
       }
 
-      console.log("Payers loaded:", payerData);
-      console.log(
-        "Number of payers:",
-        payerData.length
-      );
-
       setPayers(payerData);
     } catch (error) {
-      console.error(
-        "Error fetching payers:",
-        error
-      );
+      console.error( "Error fetching payers:", error  );
 
       setPayers([
         { id: 22, name: "Ajayt" },
@@ -268,10 +246,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
       ]);
     }
   };
-
-  // ============================================================
-  // Initial Data
-  // ============================================================
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -618,20 +592,10 @@ const CreateProgram = ({ onClose, onUpdate }) => {
           : "",
       };
 
-      console.log(
-        "Creating program with payload:",
-        payload
-      );
-
       const response =
         await smartReachApi.createProgram(
           payload
         );
-
-      console.log(
-        "Create program response:",
-        response
-      );
 
       if (
         response &&
@@ -685,13 +649,8 @@ const CreateProgram = ({ onClose, onUpdate }) => {
     }
   };
 
-  // ============================================================
-  // UI
-  // ============================================================
-
   return (
     <>
-      {/* Overlay */}
       <div
         className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4"
         onMouseDown={(event) => {
@@ -703,16 +662,12 @@ const CreateProgram = ({ onClose, onUpdate }) => {
           }
         }}
       >
-        {/* Modal */}
         <div
           className="my-8 w-full max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
           onMouseDown={(event) =>
             event.stopPropagation()
           }
         >
-          {/* ================================================== */}
-          {/* Header */}
-          {/* ================================================== */}
 
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
             <h2 className="text-lg font-bold text-slate-900">
@@ -736,9 +691,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
             </button>
           </div>
 
-          {/* ================================================== */}
-          {/* Body */}
-          {/* ================================================== */}
 
           <div className="space-y-6 px-6 py-5">
             {loading &&
@@ -766,9 +718,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
               </div>
             ) : (
               <>
-                {/* ================================================== */}
-                {/* Program Name */}
-                {/* ================================================== */}
 
                 <div className="flex items-center">
                   <label className="w-32 shrink-0 text-sm font-semibold text-slate-700">
@@ -792,12 +741,8 @@ const CreateProgram = ({ onClose, onUpdate }) => {
                   />
                 </div>
 
-                {/* ================================================== */}
-                {/* External Data + PAC */}
-                {/* ================================================== */}
 
                 <div className="grid grid-cols-2 gap-6">
-                  {/* External Data */}
 
                   <div>
                     <div className="mb-2 flex items-center gap-1.5">
@@ -1025,7 +970,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
                     </select>
                   </div>
 
-                  {/* Text Time */}
 
                   <div>
                     <label
@@ -1063,10 +1007,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
                   </div>
                 </div>
 
-                {/* ================================================== */}
-                {/* Dates */}
-                {/* ================================================== */}
-
                 <div>
                   <label
                     className={labelClass}
@@ -1075,7 +1015,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
                   </label>
 
                   <div className="grid grid-cols-2 gap-6">
-                    {/* From */}
 
                     <div>
                       <span
@@ -1131,10 +1070,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
                   </div>
                 </div>
 
-                {/* ================================================== */}
-                {/* Threshold */}
-                {/* ================================================== */}
-
                 <div>
                   <label
                     className={labelClass}
@@ -1176,7 +1111,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
                     </span>
                   </div>
 
-                  {/* Allocation Bar */}
 
                   <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
@@ -1190,7 +1124,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
                     />
                   </div>
 
-                  {/* Remaining */}
 
                   <div className="mt-1.5 text-sm">
                     {remaining === 0 ? (
@@ -1211,9 +1144,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
             )}
           </div>
 
-          {/* ================================================== */}
-          {/* Footer */}
-          {/* ================================================== */}
 
           <div className="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50/50 px-6 py-4">
             <button
@@ -1241,10 +1171,6 @@ const CreateProgram = ({ onClose, onUpdate }) => {
           </div>
         </div>
       </div>
-
-      {/* ================================================== */}
-      {/* Confirm Dialog */}
-      {/* ================================================== */}
 
       <ConfirmDialog
         open={showConfirmDialog}

@@ -251,12 +251,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
       setRemainingTextLimit(remaining);
       setRemainingTotalTextLimit(remainingForCurrentProgram);
 
-      console.log("📊 Practice Text Limit:", practiceTextLimit);
-      console.log("📊 Used Program Threshold:", usedThreshold);
-      console.log("📊 Current Program Threshold:", currentProgramThreshold);
-      console.log("📊 Remaining Text Limit:", remaining);
-      console.log("📊 Remaining Total Text Limit:", remainingForCurrentProgram);
-
       return {
         practiceTextLimit,
         usedThreshold,
@@ -314,9 +308,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
         return;
       }
 
-      console.log(`🔍 Opening ${type} detail for action ID:`, programActionId);
-      console.log(`🔍 Program ID:`, programId);
-
       let availableData = [];
       let selectedData = [];
       let title = "";
@@ -330,20 +321,14 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             programId,
           );
 
-          console.log(`📊 Raw Activity Response:`, response);
-
-          // Handle different response structures
           let availableList = [];
           let selectedList = [];
 
           if (Array.isArray(response)) {
             if (response.length > 0 && response[0]?.availableList) {
-              // Format: [{ availableList: [...], selectedList: [...] }]
               availableList = response[0].availableList || [];
               selectedList = response[0].selectedList || [];
             } else {
-              // Format: plain array of items
-              // All items are available if no selected list is provided
               availableList = response;
               selectedList = [];
             }
@@ -352,7 +337,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             selectedList = response.selectedList || [];
           }
 
-          // Normalize available data
           availableData = (availableList || []).map((item) => ({
             ...item,
             id: item.id || item.activity_id || item.activityId,
@@ -361,7 +345,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             display_name: item.display_name || item.name || item.activity_name,
           }));
 
-          // Normalize selected data
           selectedData = (selectedList || []).map((item) => ({
             ...item,
             id: item.id || item.activity_id || item.activityId,
@@ -370,7 +353,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             display_name: item.display_name || item.name || item.activity_name,
           }));
 
-          // If selectedData is empty but action.value has IDs, try to match them
           if (
             selectedData.length === 0 &&
             action.value &&
@@ -392,7 +374,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             programId,
           );
 
-          console.log(`📊 Raw Location Response:`, response);
 
           let availableList = [];
           let selectedList = [];
@@ -447,7 +428,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             programId,
           );
 
-          console.log(`📊 Raw Provider Response:`, response);
 
           let availableList = [];
           let selectedList = [];
@@ -502,10 +482,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           return;
       }
 
-      console.log(`📊 ${type} - Available:`, availableData);
-      console.log(`📊 ${type} - Selected:`, selectedData);
-
-      // Remove selected items from available list to avoid duplicates
       const selectedIds = new Set(selectedData.map((item) => String(item.id)));
       const filteredAvailable = availableData.filter(
         (item) => !selectedIds.has(String(item.id)),
@@ -558,10 +534,8 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
       return;
     }
 
-    // Get selected values returned by the dialog
     let values = result.values || result.selected || [];
 
-    // If dialog returned nothing, use the data that was originally selected
     if (values.length === 0 && actionDetailDialog.data?.selectedData) {
       values = actionDetailDialog.data.selectedData;
     }
@@ -571,9 +545,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
     const programId = Number(program.id);
     const programName = programInfo?.programName || program?.name || "";
 
-    console.log("📊 Type:", type);
-    console.log("📊 Values from dialog:", values);
-    console.log("📊 Result object:", result);
 
     setDialogLoading(true);
 
@@ -582,13 +553,8 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
       let apiCall;
 
       switch (type) {
-        // --------------------------------------------------
-        // ACTIVITY
-        // --------------------------------------------------
         case "activity": {
           const selectedActivity = values?.[0];
-
-          console.log("🟢 Selected Activity:", selectedActivity);
 
           payload = {
             value: [selectedActivity?.id],
@@ -604,13 +570,9 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           break;
         }
 
-        // --------------------------------------------------
-        // LOCATION
-        // --------------------------------------------------
         case "location": {
           const selectedLocation = values?.[0];
 
-          console.log("📍 Selected Location:", selectedLocation);
 
           payload = {
             value: [selectedLocation?.id],
@@ -626,13 +588,9 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           break;
         }
 
-        // --------------------------------------------------
-        // PROVIDER
-        // --------------------------------------------------
         case "provider": {
           const selectedProvider = values?.[0];
 
-          console.log("👨‍⚕️ Selected Provider:", selectedProvider);
 
           payload = {
             value: [selectedProvider?.id],
@@ -652,12 +610,10 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           return;
       }
 
-      console.log(`📤 ${type} Payload:`, JSON.stringify(payload, null, 2));
 
       if (apiCall) {
         await apiCall;
 
-        // Refresh scheduled actions
         const refreshedActions = await smartReachApi.getSelectedActions(
           program.id,
         );
@@ -693,14 +649,10 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
       });
     }
   };
-  // ============================================================
-  // HELPER FUNCTIONS
-  // ============================================================
 
   const getItemDisplayValue = (item) => {
     if (!item) return "";
     if (typeof item === "string") {
-      // If it's in "id_name" format, extract just the name
       if (item.includes("_")) {
         const parts = item.split("_");
         return parts.slice(1).join("_");
@@ -709,14 +661,11 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
     }
     if (typeof item === "number") return String(item);
     if (typeof item === "object") {
-      // For patient zip
       if (item.code) return String(item.code);
       if (item.zip) return String(item.zip);
       if (item.zip_code) return String(item.zip_code);
-      // For insurance
       if (item.display_name) return String(item.display_name);
       if (item.plan_name) return String(item.plan_name);
-      // For ethnicity
       if (item.ethnicity) return String(item.ethnicity);
       if (item.ethnicity_name) return String(item.ethnicity_name);
       if (item.race_name) return String(item.race_name);
@@ -767,17 +716,12 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
     setHasChanges(true);
   };
 
-  // ============================================================
-  // REFRESH CPT DATA
-  // ============================================================
-
   const refreshCptData = async (criteriaId) => {
     try {
       const result = await smartReachApi.getCptCodeHadCriteria(
         program.id,
         criteriaId,
       );
-      console.log("🔄 Refreshed CPT data:", result);
 
       const criteriaToUpdate = selectedCriteria.find(
         (c) => Number(c.id || c.criteriaId) === Number(criteriaId),
@@ -801,9 +745,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
     }
   };
 
-  // ============================================================
-  // HANDLE DIALOG CLOSE
-  // ============================================================
 
   const handleDialogClose = async (result) => {
     if (!result) return closeDialog();
@@ -816,8 +757,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
       return;
     }
 
-    console.log(`📊 ${type} values:`, JSON.stringify(values, null, 2));
-
     const selectedIds = values
       .map((item) => getItemDisplayValue(item))
       .filter(Boolean);
@@ -828,7 +767,7 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
       !result.maxAge &&
       !result.minFrequency &&
       !result.maxFrequency &&
-      !result.values // ✅ Also check for message text
+      !result.values 
     ) {
       return closeDialog();
     }
@@ -1106,11 +1045,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log(
-            "📤 Insurance values in id_plan_name format:",
-            insuranceValues,
-          );
-
           payload = {
             programId: programId,
             programCriteriaId: criteriaId,
@@ -1147,11 +1081,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
               return String(item);
             })
             .filter(Boolean);
-
-          console.log(
-            "📤 Location Scheduled values in id_name format:",
-            locationValues,
-          );
 
           payload = {
             programId: programId,
@@ -1190,11 +1119,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log(
-            "📤 Location Billed values in id_name format:",
-            locationValues,
-          );
-
           payload = {
             programId: programId,
             attributeId: criteriaId,
@@ -1228,7 +1152,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log("📤 Providers values in id_name format:", providerValues);
 
           payload = {
             programId: programId,
@@ -1263,10 +1186,7 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log(
-            "📤 Activity Type values in id_name format:",
-            activityValues,
-          );
+      
 
           payload = {
             programId: programId,
@@ -1301,10 +1221,7 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log(
-            "📤 Activity Set values in id_name format:",
-            activitySetValues,
-          );
+         
 
           payload = {
             programId: programId,
@@ -1342,8 +1259,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
               (item) => item !== null && item !== undefined && item !== "",
             );
 
-          console.log("📤 Patient Zip Code values (numbers only):", zipValues);
-
           payload = {
             programId: programId,
             programCriteriaId: criteriaId,
@@ -1377,8 +1292,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
               return String(item);
             })
             .filter(Boolean);
-
-          console.log("📤 Race values in id_name format:", raceValues);
 
           payload = {
             programId: programId,
@@ -1417,11 +1330,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter(Boolean);
 
-          console.log(
-            "📤 Ethnicity values in id_ethnicity format:",
-            ethnicityValues,
-          );
-
           payload = {
             programId: programId,
             attributeId: criteriaId,
@@ -1431,20 +1339,12 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             operand: result.operand || data?.operand || "OR",
           };
 
-          console.log(
-            "📤 Ethnicity Payload:",
-            JSON.stringify(payload, null, 2),
-          );
-
           apiCall = smartReachApi.updateEthnicityTypeCriteria(payload);
           break;
         }
 
-        // ============================================================
-        // SCHEDULED ACTIONS
-        // ============================================================
+       
         case "displayLocation": {
-          // Get the action IDs from selected values
           const actionIds = values
             .map((item) => {
               if (typeof item === "number") return item;
@@ -1459,7 +1359,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             })
             .filter((id) => id !== null && id !== undefined);
 
-          console.log("📤 Scheduled Actions IDs:", actionIds);
 
           payload = {
             actionId: actionIds,
@@ -1471,19 +1370,12 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           apiCall = smartReachApi.updateProgramActions(payload);
           break;
         }
-        // Add this case after the "displayLocation" case and before "default"
-
-        // In handleDialogClose function - update the messageText case
         case "messageText": {
-          // ✅ Get the message from result.values (what MessageText returns)
-          // If result.values is an array, get the first item, otherwise use as-is
           const messageText = Array.isArray(result.values)
             ? result.values[0] || ""
             : result.values || "";
 
-          console.log("📤 Updating message text:", messageText);
 
-          // Update the programTextMsgInfo state with the new message
           if (programTextMsgInfo.length > 0) {
             const updatedMessages = programTextMsgInfo.map((msg, idx) => {
               if (idx === 0) {
@@ -1493,7 +1385,6 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
             });
             setProgramTextMsgInfo(updatedMessages);
           } else {
-            // If no messages exist, create one
             setProgramTextMsgInfo([
               {
                 messageText: messageText,
@@ -1506,22 +1397,18 @@ const [confirmDiscard, setConfirmDiscard] = useState(false);
           shared.toast?.success?.("Message text updated");
           break;
         }
-// In handleDialogClose function - replace the displayCriteria case
 case "displayCriteria": {
-  // Handle both "next" and "submit" actions, or when action is not "close"
   const isSaveAction = result?.action !== "close";
   
   if (isSaveAction && values) {
     try {
       setDialogLoading(true);
 
-      // Get the criteria IDs from the selected values
       const criteriaToSave = Array.isArray(values) ? values : [];
       const patientAttributesId = criteriaToSave
         .map((item) => item.id || item.criteriaId)
         .filter(Boolean);
 
-      // Build payload for programCriteria API
       const payload = {
         patientAttributesId: patientAttributesId,
         programsId: programId,
@@ -1529,14 +1416,9 @@ case "displayCriteria": {
         programName: programName,
       };
 
-      console.log("📤 PROGRAM CRITERIA PAYLOAD:", JSON.stringify(payload, null, 2));
 
-      // Call the programCriteria API
       await smartReachApi.programCriteria(payload);
 
-      // console.log("✅ PROGRAM CRITERIA POST SUCCESS");
-
-      // Update the selected criteria list
       const updated = await smartReachApi.getSelectedCriteria(program.id);
       setSelectedCriteria(sortAlphabetically(updated));
       setHasChanges(true);
@@ -1558,7 +1440,6 @@ case "displayCriteria": {
     }
     return;
   } else {
-    // Close without saving
     setDialog({
       type: null,
       open: false,
@@ -1597,7 +1478,6 @@ case "displayCriteria": {
         }
       }
 
-      console.log(`📤 ${type} Payload:`, JSON.stringify(payload, null, 2));
 
       if (apiCall) await apiCall;
 
@@ -1605,7 +1485,6 @@ case "displayCriteria": {
         await refreshCptData(criteriaId);
       }
 
-      // For displayLocation, refresh the selected actions after update
       if (type === "displayLocation") {
         const refreshedActions = await smartReachApi.getSelectedActions(
           program.id,
@@ -1621,7 +1500,6 @@ case "displayCriteria": {
         }));
         setSelectedScheduledActions(sortAlphabetically(normalized));
 
-        // Also update the dialog data to reflect the new selection
         if (dialog.open) {
           setDialog((prev) => ({
             ...prev,
@@ -1652,10 +1530,6 @@ case "displayCriteria": {
       closeDialog();
     }
   };
-
-  // ============================================================
-  // CRITERIA EDIT HANDLER
-  // ============================================================
 
   const editCriteria = async (criteria) => {
     const name = criteria.name?.toLowerCase() || "";
@@ -1779,17 +1653,10 @@ case "displayCriteria": {
             }));
           }
 
-          // Put all codes in selectedList
           selectedList = codes;
-          // availableList is ALWAYS empty for patient zip (user adds via input field)
           availableList = [];
 
-          console.log(
-            `📊 patientZipCodeHadCriteria - Selected (from API):`,
-            selectedList,
-          );
         }
-        // In the fetchListData function, update the race handling
         if (type === "raceTypeHadCriteria") {
           availableList = (data.availableList || []).map((item) => ({
             ...item,
@@ -1806,7 +1673,6 @@ case "displayCriteria": {
             race_name: item.race_name || item.race || item.name,
           }));
         }
-        // If it's insurance criteria, ensure we use display_name and id
         if (type === "insurance") {
           availableList = (data.availableList || []).map((item) => ({
             ...item,
@@ -1824,7 +1690,6 @@ case "displayCriteria": {
           }));
         }
 
-        // If it's location criteria, ensure we use name and id
         if (type === "locationScheduled" || type === "locationBilled") {
           availableList = (data.availableList || []).map((item) => ({
             ...item,
@@ -1840,7 +1705,6 @@ case "displayCriteria": {
           }));
         }
 
-        // If it's ethnicity criteria, ensure we use the correct field
         if (type === "ethnicityTypeHadCriteria") {
           availableList = (data.availableList || []).map((item) => ({
             ...item,
@@ -1860,8 +1724,6 @@ case "displayCriteria": {
           }));
         }
 
-        console.log(`📊 ${type} - Available:`, availableList);
-        console.log(`📊 ${type} - Selected:`, selectedList);
 
         openDialog(type, {
           ...dialogData,
@@ -2078,10 +1940,6 @@ case "displayCriteria": {
     }
   };
 
-  // ============================================================
-  // PICKERS
-  // ============================================================
-
   const openCriteriaPicker = async () => {
   setDialogLoading(true);
   try {
@@ -2090,11 +1948,9 @@ case "displayCriteria": {
       smartReachApi.getSelectedCriteria(program.id),
     ]);
     
-    // Open the DisplayCriteria dialog
     openDialog("displayCriteria", {
       availableData: allCriteria || [],
       selectedData: selected || [],
-      // Pass additional context
       programId: program.id,
       programName: programInfo?.programName || program?.name || "",
       requestAppFrom: REQUEST_FROM,
@@ -2109,16 +1965,11 @@ case "displayCriteria": {
   const openScheduledActionPicker = async () => {
     setDialogLoading(true);
     try {
-      // Get both available actions and selected actions
       const [allActions, selectedActions] = await Promise.all([
         smartReachApi.getScheduledActions(),
         smartReachApi.getSelectedActions(program.id),
       ]);
 
-      console.log("📊 All Actions:", allActions);
-      console.log("📊 Selected Actions:", selectedActions);
-
-      // Map the actions to ensure they have the correct structure
       const availableActions = (allActions || []).map((action) => ({
         id: action.id || action.actionId || action.action_id,
         name:
@@ -2131,7 +1982,6 @@ case "displayCriteria": {
         ...action,
       }));
 
-      // Normalize selected actions
       const selectedActionList = (selectedActions || []).map((action) => ({
         id: action.id || action.actionId || action.action_id,
         name:
@@ -2140,15 +1990,11 @@ case "displayCriteria": {
         ...action,
       }));
 
-      console.log("📊 Normalized Available Actions:", availableActions);
-      console.log("📊 Normalized Selected Actions:", selectedActionList);
-
       openDialog("displayLocation", {
         availableData: availableActions,
         selectedData: selectedActionList,
         criteriaId: "scheduledActions",
         criteriaName: "Scheduled Actions",
-        // ✅ FIX: Set the title explicitly for the dialog
         title: "Configure Scheduled Actions",
         configureLabel: "Scheduled Action",
         actionLabel: "Configure",
@@ -2164,10 +2010,8 @@ case "displayCriteria": {
     }
   };
   const openTextMessagePicker = () => {
-    // Get the current message from the first item in programTextMsgInfo
     const firstMsg = programTextMsgInfo[0] || {};
 
-    // Try different possible field names for the message text
     const currentMessage =
       firstMsg.messageText ||
       firstMsg.message_text ||
@@ -2178,10 +2022,6 @@ case "displayCriteria": {
       firstMsg.value ||
       "";
 
-    console.log("📤 Current message text:", currentMessage);
-    console.log("📤 Full message object:", firstMsg);
-
-    // ✅ Directly set dialog state to ensure messageDynamicText is at top level
     setDialog({
       type: "messageText",
       open: true,
@@ -2193,14 +2033,9 @@ case "displayCriteria": {
     });
   };
 
-  // ============================================================
-  // UPDATE & CLOSE
-  // ============================================================
-
   const handleUpdate = async () => {
     setSaving(true);
     try {
-      // ✅ Get the latest message from programTextMsgInfo
       const firstMsg = programTextMsgInfo[0] || {};
       const messageText =
         firstMsg.messageText || firstMsg.message_text || firstMsg.text || "";
@@ -2222,7 +2057,6 @@ case "displayCriteria": {
       setSaving(false);
     }
   };
-// Update the handleClose and handleDiscardConfirm functions
 
 const handleDiscardConfirm = (confirmed) => {
   setConfirmDiscard(false);
@@ -2235,7 +2069,6 @@ const handleDiscardConfirm = (confirmed) => {
   
   setTimeout(() => {
     setIsClosing(false);
-    // ✅ Use onCancel if provided, otherwise use onClose
     if (onCancel) {
       onCancel();
     } else {
@@ -2245,18 +2078,15 @@ const handleDiscardConfirm = (confirmed) => {
 };
 
 const handleClose = () => {
-  // If there are unsaved changes, show ConfirmDialog
   if (hasChanges) {
     setConfirmDiscard(true);
     return;
   }
 
-  // No changes, close directly
   setIsClosing(true);
 
   setTimeout(() => {
     setIsClosing(false);
-    // ✅ Use onCancel if provided, otherwise use onClose
     if (onCancel) {
       onCancel();
     } else {
@@ -2264,10 +2094,6 @@ const handleClose = () => {
     }
   }, 300);
 };
-
-  // ============================================================
-  // FETCH DATA
-  // ============================================================
 
   const fetchData = async () => {
     setLoading(true);
@@ -2303,10 +2129,8 @@ const handleClose = () => {
         sortAlphabetically(normalizedSelectedActions),
       );
 
-      // Keep all available actions for reference
       setSelectedActions(sortAlphabetically(scheduled || []));
       setProgramTextMsgInfo(Array.isArray(messages) ? messages : []);
-      // setProgramThreshold(threshold || 0);
 
       const ageCriteria = criteriaArray.find(
         (c) => c.name === CRITERIA_NAMES.AGE,
@@ -2399,15 +2223,10 @@ const handleClose = () => {
     loadProgramData();
   }, [program]);
 
-  // ============================================================
-  // RENDER
-  // ============================================================
 
   if (!program) return null;
 
-// ✅ Use programInfo.threshold instead of programThreshold
 const thresholdValue = Number(programInfo?.threshold) || 0;
-// ✅ Divide by 40000 (or totalPatients if needed)
 const baseValue = 40000; // Hardcoded as per requirement
 const allocationPercent =
   baseValue > 0
@@ -2417,12 +2236,9 @@ const allocationPercent =
   const renderCriteriaItem = (criteria, label) => {
     const name = criteria.name?.toLowerCase() || "";
 
-    // Helper to get display value from criteria values
-    // Update the getDisplayValue function to handle race data properly
     const getDisplayValue = (item) => {
       if (!item) return "";
       if (typeof item === "string") {
-        // If it's in "id_name" format, extract just the name
         if (item.includes("_")) {
           const parts = item.split("_");
           return parts.slice(1).join("_");
@@ -2431,17 +2247,13 @@ const allocationPercent =
       }
       if (typeof item === "number") return String(item);
       if (typeof item === "object") {
-        // For race data - check for race_name first
         if (item.race_name) return String(item.race_name);
         if (item.race) return String(item.race);
-        // For patient zip
         if (item.code) return String(item.code);
         if (item.zip) return String(item.zip);
         if (item.zip_code) return String(item.zip_code);
-        // For insurance
         if (item.display_name) return String(item.display_name);
         if (item.plan_name) return String(item.plan_name);
-        // For ethnicity
         if (item.ethnicity) return String(item.ethnicity);
         if (item.ethnicity_name) return String(item.ethnicity_name);
         if (item.name) return String(item.name);
@@ -2450,11 +2262,9 @@ const allocationPercent =
         if (item.cptCode) return String(item.cptCode);
         if (item.id) return String(item.id);
         if (item.value) return String(item.value);
-        // If it has toString that's not [object Object], use it
         if (item.toString && item.toString() !== "[object Object]") {
           return item.toString();
         }
-        // Last resort - try to get any meaningful property
         const firstValue = Object.values(item).find(
           (v) => typeof v === "string" || typeof v === "number",
         );
@@ -2469,7 +2279,6 @@ const allocationPercent =
         ? criteria.values.map((v) => getDisplayValue(v)).join(", ")
         : criteria.displayText || "";
 
-    // Diagnosis codes
     if (name.includes("diagnosis")) {
       const codeList = criteria.values
         ?.slice(0, 3)
@@ -2484,11 +2293,6 @@ const allocationPercent =
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-800">
             {label || criteria.name}
-            {/* {criteria.values?.length > 0 && (
-            <span className="ml-2 text-xs text-slate-500">
-              ({criteria.values.length} codes: {codeList}{extra})
-            </span>
-          )} */}
           </span>
           <EditIconButton
             title={`Edit ${criteria.name}`}
@@ -2499,7 +2303,6 @@ const allocationPercent =
       );
     }
 
-    // Age
     if (criteria.name === "Age" || criteria.name === CRITERIA_NAMES.AGE) {
       const minYears = Math.floor((criteria.min || 0) / 12);
       const minMonths = (criteria.min || 0) % 12;
@@ -2511,9 +2314,6 @@ const allocationPercent =
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-800">
             {label || criteria.name}
-            {/* <span className="ml-2 text-xs text-slate-500">
-            ({displayRange})
-          </span> */}
           </span>
           <EditIconButton
             title={`Edit ${criteria.name}`}
@@ -2524,7 +2324,6 @@ const allocationPercent =
       );
     }
 
-    // Frequency
     if (
       criteria.name === "Frequency" ||
       criteria.name === CRITERIA_NAMES.FREQUENCY
@@ -2535,9 +2334,7 @@ const allocationPercent =
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-800">
             {label || criteria.name}
-            {/* <span className="ml-2 text-xs text-slate-500">
-            ({displayRange})
-          </span> */}
+           
           </span>
           <EditIconButton
             title={`Edit ${criteria.name}`}
@@ -2548,7 +2345,6 @@ const allocationPercent =
       );
     }
 
-    // CPT codes
     if (criteria.name?.toLowerCase().includes("cpt")) {
       const codeList = criteria.values
         ?.slice(0, 3)
@@ -2563,11 +2359,7 @@ const allocationPercent =
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-800">
             {label || criteria.name}
-            {/* {criteria.values?.length > 0 && (
-            <span className="ml-2 text-xs text-slate-500">
-              ({criteria.values.length} codes: {codeList}{extra})
-            </span>
-          )} */}
+           
           </span>
           <EditIconButton
             title={`Edit ${criteria.name}`}
@@ -2578,7 +2370,6 @@ const allocationPercent =
       );
     }
 
-    // Ethnicity
     if (name.includes("ethnicity")) {
       const valueList = criteria.values
         ?.slice(0, 3)
@@ -2593,11 +2384,7 @@ const allocationPercent =
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-800">
             {label || criteria.name}
-            {/* {criteria.values?.length > 0 && (
-            <span className="ml-2 text-xs text-slate-500">
-              ({criteria.values.length} items: {valueList}{extra})
-            </span>
-          )} */}
+           
           </span>
           <EditIconButton
             title={`Edit ${criteria.name}`}
@@ -2608,7 +2395,6 @@ const allocationPercent =
       );
     }
 
-    // Race
     if (name.includes("race")) {
       const valueList = criteria.values
         ?.slice(0, 3)
@@ -2623,11 +2409,7 @@ const allocationPercent =
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-800">
             {label || criteria.name}
-            {/* {criteria.values?.length > 0 && (
-            <span className="ml-2 text-xs text-slate-500">
-              ({criteria.values.length} items: {valueList}{extra})
-            </span>
-          )} */}
+           
           </span>
           <EditIconButton
             title={`Edit ${criteria.name}`}
@@ -2638,16 +2420,11 @@ const allocationPercent =
       );
     }
 
-    // Default rendering for other criteria
     return (
       <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
         <span className="text-xs font-medium text-slate-800">
           {label || criteria.name}
-          {/* {displayValue && (
-          <span className="ml-2 text-xs text-slate-500">
-            ({displayValue})
-          </span>
-        )} */}
+        
         </span>
         <EditIconButton
           title={`Edit ${criteria.name}`}
@@ -2670,7 +2447,6 @@ const allocationPercent =
           className="my-8 w-full max-w-3xl rounded-xl border border-slate-200 bg-white shadow-xl"
           onMouseDown={(e) => e.stopPropagation()}
         >
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
             <h2 className="text-lg font-bold text-slate-900">
               {program.name || "Program Details"}
@@ -2689,7 +2465,6 @@ const allocationPercent =
             </button>
           </div>
 
-          {/* Body */}
           <div className="space-y-6 px-6 py-5">
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -2712,7 +2487,6 @@ const allocationPercent =
               </div>
             ) : (
               <>
-                {/* All Criteria Section */}
                 <div>
                   <button
                     onClick={openCriteriaPicker}
@@ -2798,7 +2572,6 @@ const allocationPercent =
                   )}
                 </div>
 
-                {/* Scheduled Action */}
                 <div>
                   <button
                     onClick={openScheduledActionPicker}
@@ -2810,7 +2583,6 @@ const allocationPercent =
                   {selectedScheduledActions.length > 0 && (
                     <div className="mt-2 space-y-1.5">
                       {selectedScheduledActions.map((item, idx) => {
-                        // Determine the type based on the action name
                         let actionType = "";
                         const name = item.name?.toLowerCase() || "";
                         if (
@@ -2885,8 +2657,6 @@ const allocationPercent =
                       onClose={handleActionDetailClose}
                     />
                   )}
-                {/* Text Message */}
-                {/* Text Message */}
                 <div>
                   <button
                     onClick={openTextMessagePicker}
@@ -2898,7 +2668,6 @@ const allocationPercent =
                   {programTextMsgInfo && programTextMsgInfo.length > 0 && (
                     <div className="mt-2 space-y-1.5">
                       {programTextMsgInfo.map((msg, idx) => {
-                        // Try different possible field names for the message text
                         const messageText =
                           msg?.messageText ||
                           msg?.message_text ||
@@ -2931,7 +2700,6 @@ const allocationPercent =
                   )}
                 </div>
 
-                {/* Program Info */}
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -2953,7 +2721,6 @@ const allocationPercent =
                   </div>
                 </div>
 
-                {/* Threshold */}
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center gap-6">
                     <div>
@@ -2961,8 +2728,6 @@ const allocationPercent =
                         Threshold
                       </span>
                       <p className="text-sm font-medium text-slate-800">
-                        {/* {formatNumber(thresholdValue)} /{" "}
-                        {formatNumber(totalPatients)} */}
                         {programInfo?.threshold} / 40000
                       </p>
                     </div>
@@ -2988,7 +2753,6 @@ const allocationPercent =
             )}
           </div>
 
-          {/* Footer */}
           <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
             {(saving || isClosing) && (
               <span className="mr-auto flex items-center gap-2 text-xs text-slate-500">
@@ -3014,7 +2778,6 @@ const allocationPercent =
         </div>
       </div>
 
-      {/* Dialogs */}
       <DisplayCriteria
         open={dialog.open && dialog.type === "displayCriteria"}
         data={dialog.data}
@@ -3122,7 +2885,6 @@ const allocationPercent =
   onClose={(confirmed) => {
     setConfirmDiscard(false);
     if (confirmed) {
-      // ✅ Use onCancel if provided, otherwise use onClose
       if (onCancel) {
         onCancel();
       } else {

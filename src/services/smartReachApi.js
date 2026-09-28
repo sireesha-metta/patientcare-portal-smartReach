@@ -1,4 +1,3 @@
-// src/services/smartReachApi.js
 
 import axios from "axios";
 import { sharedUiService } from "patientcare-portal-sharedui/sharedUiService";
@@ -301,23 +300,14 @@ export const smartReachApi = {
         },
       });
 
-      console.log("📊 RAW CPT API RESPONSE:", response);
-
-      // Handle the nested response structure like Angular does
       let data = response?.data?.response ?? response?.data ?? response;
 
-      console.log("📊 CPT DATA AFTER UNWRAP:", data);
-
-      // If data is an array with response object
       if (Array.isArray(data) && data.length > 0) {
         const firstItem = data[0];
-        // Check if it has availableList/selectedList or response property
         if (
           firstItem?.availableList !== undefined ||
           firstItem?.selectedList !== undefined
         ) {
-          console.log("📊 Found availableList/selectedList in array[0]");
-          // Also check for cptHadNotFreqData
           if (firstItem?.cptHadNotFreqData !== undefined) {
             return {
               ...firstItem,
@@ -326,7 +316,6 @@ export const smartReachApi = {
           }
           return firstItem;
         }
-        // If the response is nested deeper
         if (firstItem?.response) {
           const responseData = firstItem.response;
           if (Array.isArray(responseData) && responseData.length > 0) {
@@ -342,12 +331,10 @@ export const smartReachApi = {
         }
       }
 
-      // If data itself has availableList/selectedList
       if (
         data?.availableList !== undefined ||
         data?.selectedList !== undefined
       ) {
-        console.log("📊 Found availableList/selectedList in object");
         return {
           availableList: data.availableList || [],
           selectedList: data.selectedList || [],
@@ -355,13 +342,10 @@ export const smartReachApi = {
         };
       }
 
-      // If data is an array of codes directly
       if (Array.isArray(data)) {
-        console.log("📊 Data is direct array of codes");
         return { availableList: data, selectedList: [] };
       }
 
-      console.log("📊 No data found, returning empty");
       return { availableList: [], selectedList: [] };
     } catch (error) {
       console.error("❌ Get CPT Code Had Criteria Error:", error);
@@ -392,10 +376,7 @@ export const smartReachApi = {
   },
   async updateProgramActions(payload) {
     try {
-      console.log(
-        "📤 Update Program Actions Payload:",
-        JSON.stringify(payload, null, 2),
-      );
+      
       const response = await client().post("/programAction", payload);
       return response?.data;
     } catch (error) {
@@ -480,10 +461,6 @@ export const smartReachApi = {
 
   async updateAppointmentStatus(payload) {
     try {
-      console.log(
-        "📤 Appointment Status Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/appointments", payload);
       return response?.data;
     } catch (error) {
@@ -520,11 +497,6 @@ export const smartReachApi = {
         name: payload.name || "Age",
         attributeId: payload.attributeId,
       };
-
-      console.log(
-        "📤 Criteria Age Request Payload:",
-        JSON.stringify(requestPayload, null, 2),
-      );
 
       const response = await client().post("/criteriaage", requestPayload);
       return response?.data;
@@ -563,15 +535,8 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // LOCATION CRITERIA - UNIFIED (POST /locations)
-  // ============================================================
   async updateLocationCriteria(payload) {
     try {
-      console.log(
-        "📤 Location Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/locations", payload);
       return response?.data;
     } catch (error) {
@@ -584,9 +549,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // ETHNICITY CRITERIA (GET /ethnicities)
-  // ============================================================
   async getEthnicityTypeCriteria(programId, criteriaId) {
     try {
       const response = await client().get("/ethnicities", {
@@ -608,15 +570,8 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // ETHNICITY CRITERIA (POST /ethnicities)
-  // ============================================================
   async updateEthnicityTypeCriteria(payload) {
     try {
-      console.log(
-        "📤 Ethnicity Type Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/ethnicities", payload);
       return response?.data;
     } catch (error) {
@@ -629,15 +584,8 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // PROGRAM FREQUENCY INFO (POST /programfrequencyinfo)
-  // ============================================================
   async programFrequencyInfo(payload) {
     try {
-      console.log(
-        "📤 Program Frequency Info Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/programfrequencyinfo", payload);
       return response?.data;
     } catch (error) {
@@ -650,9 +598,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // CRITERIA FREQUENCY (POST /criteriafrequency)
-  // ============================================================
   async criteriaFrequency(payload) {
     try {
       const requestPayload = {
@@ -664,10 +609,6 @@ export const smartReachApi = {
         attributeId: payload.attributeId,
       };
 
-      console.log(
-        "📤 Criteria Frequency Request Payload:",
-        JSON.stringify(requestPayload, null, 2),
-      );
       const response = await client().post(
         "/criteriafrequency",
         requestPayload,
@@ -683,9 +624,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // GENDER CRITERIA (GET /gender)
-  // ============================================================
   async getGenderCriteria(programId, criteriaId) {
     try {
       const response = await client().get("/gender", {
@@ -707,15 +645,8 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // GENDER CRITERIA (POST /genders)
-  // ============================================================
   async updateGenderCriteria(payload) {
     try {
-      console.log(
-        "📤 Gender Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/genders", payload);
       return response?.data;
     } catch (error) {
@@ -728,9 +659,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // INSURANCE CRITERIA (GET /insurancesdata)
-  // ============================================================
   async getInsuranceCriteria(programId, criteriaId) {
     try {
       const response = await client().get("/insurancesdata", {
@@ -752,15 +680,8 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // INSURANCE CRITERIA (POST /insurances)
-  // ============================================================
   async updateInsuranceCriteria(payload) {
     try {
-      console.log(
-        "📤 Insurance Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/insurances", payload);
       return response?.data;
     } catch (error) {
@@ -773,9 +694,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // PATIENT ZIP CODE CRITERIA (GET /patientzipcodes)
-  // ============================================================
   async getPatientZipCodeCriteria(programId, criteriaId) {
     try {
       const response = await client().get("/patientzipcodes", {
@@ -786,20 +704,14 @@ export const smartReachApi = {
         },
       });
 
-      console.log("📊 RAW Patient Zip API Response:", response);
-
-      // The API returns the selected zip codes directly as [{code: 12}, {code: 123}]
-      // These are already selected values for the program
       const responseData =
         response?.data?.response ?? response?.data ?? response;
 
-      // If response is an array with code objects, these are the selected codes
       if (
         Array.isArray(responseData) &&
         responseData.length > 0 &&
         responseData[0]?.code !== undefined
       ) {
-        // These are the selected codes from the API
         const selectedCodes = responseData.map((item) => ({
           ...item,
           name: String(item.code),
@@ -808,12 +720,11 @@ export const smartReachApi = {
         }));
 
         return {
-          selectedList: selectedCodes, // Put in selectedList
-          availableList: [], // No available codes initially
+          selectedList: selectedCodes, 
+          availableList: [],
         };
       }
 
-      // If response has availableList/selectedList structure
       if (responseData?.availableList || responseData?.selectedList) {
         const selectedList = (responseData.selectedList || []).map((item) => ({
           ...item,
@@ -838,7 +749,6 @@ export const smartReachApi = {
         return { availableList, selectedList };
       }
 
-      console.log("ℹ️ No patient zip data found, returning empty");
       return { availableList: [], selectedList: [] };
     } catch (error) {
       console.error("❌ Get Patient Zip Code Criteria Error:", error);
@@ -850,15 +760,8 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // PATIENT ZIP CODE CRITERIA (POST /zipcodes)
-  // ============================================================
   async updatePatientZipCodeCriteria(payload) {
     try {
-      console.log(
-        "📤 Patient Zip Code Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/zipcodes", payload);
       return response?.data;
     } catch (error) {
@@ -871,9 +774,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // PROVIDERS CRITERIA (GET /providers)
-  // ============================================================
   async getProvidersCriteria(programId, criteriaId) {
     try {
       const response = await client().get("/providers", {
@@ -895,15 +795,8 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // PROVIDERS CRITERIA (POST /providers)
-  // ============================================================
   async updateProvidersCriteria(payload) {
     try {
-      console.log(
-        "📤 Providers Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/providers", payload);
       return response?.data;
     } catch (error) {
@@ -916,9 +809,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // RACE CRITERIA (GET /races)
-  // ============================================================
   async getRaceTypeCriteria(programId, criteriaId) {
     try {
       const response = await client().get("/races", {
@@ -940,15 +830,8 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // RACE CRITERIA (POST /races)
-  // ============================================================
   async updateRaceTypeCriteria(payload) {
     try {
-      console.log(
-        "📤 Race Type Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/races", payload);
       return response?.data;
     } catch (error) {
@@ -961,9 +844,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // ACTIVITY TYPE CRITERIA
-  // ============================================================
   async getActivityTypeCriteria(programId, criteriaId) {
     try {
       const response = await client().get("/activityType", {
@@ -987,10 +867,6 @@ export const smartReachApi = {
 
   async updateActivityTypeCriteria(payload) {
     try {
-      console.log(
-        "📤 Activity Type Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/activityType", payload);
       return response?.data;
     } catch (error) {
@@ -1003,9 +879,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // ACTIVITY SET TYPE CRITERIA
-  // ============================================================
   async getActivitySetTypeCriteria(programId, criteriaId) {
     try {
       const response = await client().get("/activitySetType", {
@@ -1029,10 +902,6 @@ export const smartReachApi = {
 
   async updateActivitySetTypeCriteria(payload) {
     try {
-      console.log(
-        "📤 Activity Set Type Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/activitySetType", payload);
       return response?.data;
     } catch (error) {
@@ -1045,9 +914,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // CPT CODE HAVE NOT HAD CRITERIA
-  // ============================================================
   async getCptCodeHadNotCriteria(programId, criteriaId) {
     try {
       const response = await client().get("/cpt", {
@@ -1071,10 +937,6 @@ export const smartReachApi = {
 
   async updateCptCodeHadCriteria(payload) {
     try {
-      console.log(
-        "📤 CPT Code Had Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/cptcodes", payload);
       return response.data;
     } catch (error) {
@@ -1089,10 +951,6 @@ export const smartReachApi = {
 
   async updateCptCodeHadNotCriteria(payload) {
     try {
-      console.log(
-        "📤 CPT Code Had Not Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/cptcodes", payload);
       return response?.data;
     } catch (error) {
@@ -1105,9 +963,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // DIAGNOSIS CODES
-  // ============================================================
   async getDiagnosisCodes(programId, criteriaId) {
     try {
       const response = await client().get("/diagnosisCode", {
@@ -1118,7 +973,6 @@ export const smartReachApi = {
         },
       });
 
-      console.log("📊 RAW Diagnosis Code API Response:", response);
 
       const responseData = response?.data;
 
@@ -1134,7 +988,6 @@ export const smartReachApi = {
         : null;
 
       if (!diagnosisData) {
-        console.log("ℹ️ No diagnosis code data found");
         return {
           availableList: [],
           selectedList: [],
@@ -1149,9 +1002,6 @@ export const smartReachApi = {
         ? diagnosisData.selectedList
         : [];
 
-      console.log("📊 Available Diagnosis Codes:", availableList);
-      console.log("📊 Selected Diagnosis Codes:", selectedList);
-
       return {
         availableList,
         selectedList,
@@ -1165,27 +1015,7 @@ export const smartReachApi = {
       throw error;
     }
   },
-  // src/services/smartReachApi.js
 
-  // Add these methods to the smartReachApi object:
-
-  // ============================================================
-  // ACTIVITIES (Appointment Type)
-  // ============================================================
-  // src/services/smartReachApi.js
-
-  // Update these methods in the smartReachApi object:
-
-  // ============================================================
-  // ACTIVITIES (Appointment Type)
-  // ============================================================
-  // src/services/smartReachApi.js
-
-  // Update these methods in the smartReachApi object:
-
-  // ============================================================
-  // ACTIVITIES (Appointment Type)
-  // ============================================================
   async getActivities(programActionId, programId) {
     try {
       const response = await client().get("/activities", {
@@ -1209,10 +1039,6 @@ export const smartReachApi = {
 
   async updateActionActivity(payload) {
     try {
-      console.log(
-        "📤 Update Action Activity Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/actionActivity", payload);
       return response?.data;
     } catch (error) {
@@ -1251,10 +1077,6 @@ export const smartReachApi = {
 
   async updateActionLocation(payload) {
     try {
-      console.log(
-        "📤 Update Action Location Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/actionLocation", payload);
       return response?.data;
     } catch (error) {
@@ -1293,10 +1115,6 @@ export const smartReachApi = {
 
   async updateActionProvider(payload) {
     try {
-      console.log(
-        "📤 Update Action Provider Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/actionProvider", payload);
       return response?.data;
     } catch (error) {
@@ -1310,10 +1128,6 @@ export const smartReachApi = {
   },
   async updateDiagnosisCodeHadCriteria(payload) {
     try {
-      console.log(
-        "📤 Update Diagnosis Codes Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/icdcodes", payload);
       return response.data;
     } catch (error) {
@@ -1326,15 +1140,8 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // GENERIC CRITERIA UPDATE (FALLBACK)
-  // ============================================================
   async updateGenericCriteria(payload) {
     try {
-      console.log(
-        "📤 Generic Criteria Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/criteria", payload);
       return response?.data;
     } catch (error) {
@@ -1346,20 +1153,13 @@ export const smartReachApi = {
       throw error;
     }
   },
-  // ============================================================
-  // DELETE PROGRAM
-  // ============================================================
+
   async deleteProgram(programId) {
     try {
       const payload = {
         programId: Number(programId),
         activeStatus: 0,
       };
-
-      console.log(
-        "📤 Delete Program Payload:",
-        JSON.stringify(payload, null, 2),
-      );
 
       const response = await client().delete(`/programs`, {
         data: payload,
@@ -1368,7 +1168,6 @@ export const smartReachApi = {
         },
       });
 
-      // console.log("✅ Program deleted successfully:", response.data);
       return response?.data;
     } catch (error) {
       console.error("❌ Delete Program Error:", error);
@@ -1379,21 +1178,10 @@ export const smartReachApi = {
       throw error;
     }
   },
-  // src/services/smartReachApi.js
 
-  // Add this method to the smartReachApi object after the deleteProgram method:
-
-  // ============================================================
-  // CREATE PROGRAM
-  // ============================================================
   async createProgram(payload) {
     try {
-      console.log(
-        "📤 Create Program Payload:",
-        JSON.stringify(payload, null, 2),
-      );
       const response = await client().post("/programs", payload);
-      // console.log("✅ Program created successfully:", response.data);
       return response?.data;
     } catch (error) {
       console.error("❌ Create Program Error:", error);
@@ -1405,13 +1193,9 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // GET PARENT SITE
-  // ============================================================
   async getParentSite() {
     try {
       const response = await client().get("/parentsite/");
-      console.log("📊 Parent Site Response:", response.data);
       return response.data;
     } catch (error) {
       console.error("❌ Get Parent Site Error:", error);
@@ -1436,13 +1220,9 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // GET SMART REACH PAYER
-  // ============================================================
   async getSmartReachPayer() {
     try {
       const response = await client().get("/smartreachpayer");
-      console.log("📊 Smart Reach Payer Response:", response.data);
       return response.data;
     } catch (error) {
       console.error("❌ Get Smart Reach Payer Error:", error);
@@ -1454,9 +1234,6 @@ export const smartReachApi = {
     }
   },
 
-  // ============================================================
-  // LEGACY LOCATION METHODS (DEPRECATED - Use getLocationCriteria instead)
-  // ============================================================
   async getLocationScheduledCriteria(programId, criteriaId) {
     console.warn(
       "⚠️ getLocationScheduledCriteria is deprecated, use getLocationCriteria with locationType='scheduled'",

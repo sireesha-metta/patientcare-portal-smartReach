@@ -1,4 +1,3 @@
-// src/components/ProgramInfoEdit.jsx
 
 import { useState, useEffect } from "react";
 import { CalendarDays, Info, X } from "lucide-react";
@@ -34,9 +33,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     threshold: "",
   });
 
-  // ---------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------
 
   const formatNumber = (num) => {
     if (num === null || num === undefined || isNaN(num)) return "0";
@@ -53,9 +49,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     return parseInt(String(str).replace(/,/g, "")) || 0;
   };
 
-  // ---------------------------------------------------------
-  // Time options
-  // ---------------------------------------------------------
 
   const generateTimeOptions = () => {
     const times = [];
@@ -73,9 +66,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
 
   const timeOptions = generateTimeOptions();
 
-  // ---------------------------------------------------------
-  // Extract time from scheduleTime
-  // ---------------------------------------------------------
 
   const extractTimeFromSchedule = (scheduleTime) => {
     if (!scheduleTime) return "2PM";
@@ -98,9 +88,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     }
   };
 
-  // ---------------------------------------------------------
-  // Convert time to schedule format
-  // ---------------------------------------------------------
 
   const convertTimeToSchedule = (timeStr, dateStr) => {
     if (!timeStr || !dateStr) return null;
@@ -129,9 +116,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     }
   };
 
-  // ---------------------------------------------------------
-  // Fetch program data
-  // ---------------------------------------------------------
 
   useEffect(() => {
     if (!program) return;
@@ -150,11 +134,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
           smartReachApi.getProgramThreshold(),
         ]);
 
-        console.log("Program Info Response:", programInfoResult);
-        console.log(
-          "Threshold Response (totalThreshold):",
-          thresholdResult
-        );
 
         let infoData = programInfoResult;
 
@@ -169,9 +148,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
 
         setGoals(Array.isArray(goalsResult) ? goalsResult : []);
 
-        // -----------------------------------------------------
-        // Total threshold
-        // -----------------------------------------------------
 
         let totalThresholdValue = 0;
 
@@ -194,13 +170,9 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
           }
         }
 
-        console.log("Total Threshold Value:", totalThresholdValue);
 
         setTotalThreshold(totalThresholdValue);
 
-        // -----------------------------------------------------
-        // Populate form
-        // -----------------------------------------------------
 
         if (infoData) {
           const matchedGoal = Array.isArray(goalsResult)
@@ -286,9 +258,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
 
   if (!program) return null;
 
-  // ---------------------------------------------------------
-  // Change handlers
-  // ---------------------------------------------------------
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({
@@ -297,9 +266,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     }));
   };
 
-  // ---------------------------------------------------------
-  // Threshold
-  // ---------------------------------------------------------
 
   const handleThresholdChange = (value) => {
     const cleanValue = value.replace(/,/g, "");
@@ -349,9 +315,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     }
   };
 
-  // ---------------------------------------------------------
-  // Allocation calculations
-  // ---------------------------------------------------------
 
   const userDetails = shared.userDetails;
 
@@ -378,9 +341,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     initialThreshold -
     thresholdValue;
 
-  // ---------------------------------------------------------
-  // Close
-  // ---------------------------------------------------------
 
   const handleClose = () => {
     const hasChanges =
@@ -402,9 +362,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     }
   };
 
-  // ---------------------------------------------------------
-  // Submit
-  // ---------------------------------------------------------
 
   const handleSubmit = async () => {
     if (
@@ -478,9 +435,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
     }
   };
 
-  // ---------------------------------------------------------
-  // Common styles
-  // ---------------------------------------------------------
 
   const inputClass =
     "h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-70";
@@ -490,7 +444,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
 
   return (
     <>
-      {/* Overlay */}
       <div
         className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4"
         onMouseDown={(event) => {
@@ -499,14 +452,12 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
           }
         }}
       >
-        {/* Modal */}
         <div
           className="my-8 w-full max-w-4xl rounded-xl border border-slate-200 bg-white shadow-xl"
           onMouseDown={(event) =>
             event.stopPropagation()
           }
         >
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
             <h2 className="text-lg font-bold text-slate-900">
               Program Edit
@@ -528,7 +479,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
             </button>
           </div>
 
-          {/* Body */}
           <div className="space-y-5 px-6 py-5">
             {loading && !formData.programName ? (
               <div className="flex items-center justify-center py-12">
@@ -554,7 +504,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
               </div>
             ) : (
               <>
-                {/* Program Name */}
                 <div className="flex items-center gap-3">
                   <label className="w-32 shrink-0 text-sm font-semibold text-slate-700">
                     Program Name
@@ -575,7 +524,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                   />
                 </div>
 
-                {/* Program ID */}
                 <div className="flex items-center gap-3">
                   <span className="w-32 shrink-0 text-sm font-semibold text-slate-700">
                     Program ID
@@ -586,9 +534,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                   </span>
                 </div>
 
-                {/* External Data / PAC / Payer */}
                 <div className="grid grid-cols-3 gap-5">
-                  {/* External Data */}
                   <div>
                     <div className="mb-1.5 flex items-center ">
                       <span className={labelClass}>
@@ -648,7 +594,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     </div>
                   </div>
 
-                  {/* Payer Analytics Customer */}
                   {vptc && (
                     <div>
                       <div className="mb-1.5 flex items-center gap-1.5">
@@ -666,7 +611,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     </div>
                   )}
 
-                  {/* PAC */}
                   {vptc && (
                     <div>
                       <div className="mb-1.5 flex items-center gap-1.5">
@@ -684,9 +628,7 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                   )}
                 </div>
 
-                {/* Goal / Text Time */}
                 <div className="grid grid-cols-2 gap-5">
-                  {/* Goal */}
                   <div className="flex items-center gap-3">
                     <label className="w-32 shrink-0 text-sm font-semibold text-slate-700">
                       Goal
@@ -748,7 +690,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                     </select>
                   </div>
 
-                  {/* Text Time */}
                   <div className="flex items-center gap-3">
                     <label className="w-20 shrink-0 text-sm font-semibold text-slate-700">
                       Text Time
@@ -777,14 +718,12 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                   </div>
                 </div>
 
-                {/* Dates */}
                 <div>
                   <div className="mb-2 text-sm font-semibold text-slate-700">
                     Dates
                   </div>
 
                   <div className="grid grid-cols-2 gap-5">
-                    {/* From */}
                     <div className="flex items-center gap-3">
                       <span className="w-10 shrink-0 text-sm font-medium text-slate-600">
                         From
@@ -808,7 +747,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                       </div>
                     </div>
 
-                    {/* To */}
                     <div className="flex items-center gap-3">
                       <span className="w-10 shrink-0 text-sm font-medium text-slate-600">
                         To
@@ -834,7 +772,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
                   </div>
                 </div>
 
-                {/* Threshold */}
                 <div>
                   <div className="flex items-center gap-3">
                     <label className="w-32 shrink-0 text-sm font-semibold text-slate-700">
@@ -938,7 +875,6 @@ const ProgramInfoEdit = ({ program, onClose, onUpdate }) => {
         </div>
       </div>
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         open={showConfirmDialog}
         onClose={handleConfirmClose}
